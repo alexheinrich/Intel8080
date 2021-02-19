@@ -6,12 +6,24 @@
 
 char registers[8] = {'b', 'c', 'd', 'e', 'h', 'l', 'm', 'a'};
 
+void interpret654(char *opcode_name, uint8_t opcode)
+{
+    uint8_t destination = (opcode >> 3) & 0x07;
+    printf("%s  %c", opcode_name, registers[destination]);
+}
+
+void interpret210(char *opcode_name, uint8_t opcode)
+{
+    uint8_t source = opcode & 0x07;
+    printf("%s  %c", opcode_name, registers[source]);
+}
 
 size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
 {
     size_t opbytes = 1;
     printf("%02x ", buffer[pc]);
 
+    // mov (and hlt)
     if ((buffer[pc] & 0xc0) == 0x40) {
         uint8_t source = buffer[pc] & 0x07;
         uint8_t destination = (buffer[pc] >> 3) & 0x07;
@@ -22,6 +34,57 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
             printf("mov  %c, %c", registers[destination], registers[source]);
         }
     }
+
+    // inr
+    if ((buffer[pc] & 0xc7) == 0x04) {
+        interpret654("inr", buffer[pc]);
+    }
+
+    // dcr
+    if ((buffer[pc] & 0xc7) == 0x05) {
+        interpret654("dcr", buffer[pc]);
+    }
+
+    // add
+    if ((buffer[pc] & 0xf8) == 0x80) {
+        interpret210("add", buffer[pc]);
+    }
+
+    // adc
+    if ((buffer[pc] & 0xf8) == 0x88) {
+        interpret210("adc", buffer[pc]);
+    }
+
+    // sub
+    if ((buffer[pc] & 0xf8) == 0x90) {
+        interpret210("sub", buffer[pc]);
+    }
+
+    // sbb
+    if ((buffer[pc] & 0xf8) == 0x98) {
+        interpret210("sbb", buffer[pc]);
+    }
+
+    // ana
+    if ((buffer[pc] & 0xf8) == 0xa0) {
+        interpret210("ana", buffer[pc]);
+    }
+
+    // xra
+    if ((buffer[pc] & 0xf8) == 0xa8) {
+        interpret210("xra", buffer[pc]);
+    }
+
+    // ora
+    if ((buffer[pc] & 0xf8) == 0xb0) {
+        interpret210("ora", buffer[pc]);
+    }
+
+    // cmp
+    if ((buffer[pc] & 0xf8) == 0xb8) {
+        interpret210("cmp", buffer[pc]);
+    }
+
 
     switch(buffer[pc]) {
         case 0x00: 
@@ -36,12 +99,6 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
             break;
         case 0x03:
             printf("inx  b");
-            break;
-        case 0x04:
-            printf("inr  b");
-            break;
-        case 0x05:
-            printf("dcr  b");
             break;
         case 0x06:
             printf("mvi  b, #%02x", buffer[pc+1]);
@@ -60,12 +117,6 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
             break;
         case 0x0b:
             printf("dcx  b");
-            break;
-        case 0x0c:
-            printf("inr  c");
-            break;
-        case 0x0d:
-            printf("dcr  c");
             break;
         case 0x0e:
             printf("mvi  c, #%02x", buffer[pc+1]);
@@ -86,12 +137,6 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
         case 0x13:
             printf("inx  d");
             break;
-        case 0x14:
-            printf("inr  d");
-            break;
-        case 0x15:
-            printf("dcr  d");
-            break;
         case 0x16:
             printf("mvi  d, #%02x", buffer[pc+1]);
             opbytes = 2;
@@ -109,12 +154,6 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
             break;
         case 0x1b:
             printf("dcx  d");
-            break;
-        case 0x1c:
-            printf("inr  e");
-            break;
-        case 0x1d:
-            printf("dcr  e");
             break;
         case 0x1e:
             printf("mvi  e, #%02x", buffer[pc+1]);
@@ -137,12 +176,6 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
         case 0x23:
             printf("inx  h");
             break;
-        case 0x24:
-            printf("inr  h");
-            break;
-        case 0x25:
-            printf("dcr  h");
-            break;
         case 0x26:
             printf("mvi  h, #%02x", buffer[pc+1]);
             opbytes = 2;
@@ -161,12 +194,6 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
             break;
         case 0x2b:
             printf("dcx  h");
-            break;
-        case 0x2c:
-            printf("inr  l");
-            break;
-        case 0x2d:
-            printf("dcr  l");
             break;
         case 0x2e:
             printf("mvi  l, #%02x", buffer[pc+1]);
@@ -189,12 +216,6 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
         case 0x33:
             printf("inx  sp");
             break;
-        case 0x34:
-            printf("inr  m");
-            break;
-        case 0x35:
-            printf("dcr  m");
-            break;
         case 0x36:
             printf("mvi  m, #%02x%02x", buffer[pc+2], buffer[pc+1]);
             break;
@@ -214,12 +235,6 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
         case 0x3b:
             printf("dcx  sp");
             break;
-        case 0x3c:
-            printf("inr  a");
-            break;
-        case 0x3d:
-            printf("dcr  a");
-            break;
         case 0x3e:
             printf("mvi  a, #%0x02", buffer[pc+1]);
             opbytes = 2;
@@ -228,198 +243,14 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
             printf("cmc");
             break;
         // 0x40 - 0x7f mov
-        case 0x80:
-            printf("add  b");
-            break;
-        case 0x81:
-            printf("add  c");
-            break;
-        case 0x82:
-            printf("add  d");
-            break;
-        case 0x83:
-            printf("add  e");
-            break;
-        case 0x84:
-            printf("add  h");
-            break;
-        case 0x85:
-            printf("add  l");
-            break;
-        case 0x86:
-            printf("add  m");
-            break;
-        case 0x87:
-            printf("add  a");
-            break;
-        case 0x88:
-            printf("adc  b");
-            break;
-        case 0x89:
-            printf("adc  c");
-            break;
-        case 0x8a:
-            printf("adc  d");
-            break;
-        case 0x8b:
-            printf("adc  e");
-            break;
-        case 0x8c:
-            printf("adc  h");
-            break;
-        case 0x8d:
-            printf("adc  l");
-            break;
-        case 0x8e:
-            printf("adc  m");
-            break;
-        case 0x8f:
-            printf("adc  a");
-            break;
-        case 0x90:
-            printf("sub  b");
-            break;
-        case 0x91:
-            printf("sub  c");
-            break;
-        case 0x92:
-            printf("sub  d");
-            break;
-        case 0x93:
-            printf("sub  e");
-            break;
-        case 0x94:
-            printf("sub  h");
-            break;
-        case 0x95:
-            printf("sub  l");
-            break;
-        case 0x96:
-            printf("sub  m");
-            break;
-        case 0x97:
-            printf("sub  a");
-            break;
-        case 0x98:
-            printf("sbb  b");
-            break;
-        case 0x99:
-            printf("sbb  c");
-            break;
-        case 0x9a:
-            printf("sbb  d");
-            break;
-        case 0x9b:
-            printf("sbb  e");
-            break;
-        case 0x9c:
-            printf("sbb  h");
-            break;
-        case 0x9d:
-            printf("sbb  l");
-            break;
-        case 0x9e:
-            printf("sbb  m");
-            break;
-        case 0x9f:
-            printf("sbb  a");
-            break;
-        case 0xa0:
-            printf("ana  b");
-            break;
-        case 0xa1:
-            printf("ana  c");
-            break;
-        case 0xa2:
-            printf("ana  d");
-            break;
-        case 0xa3:
-            printf("ana  e");
-            break;
-        case 0xa4:
-            printf("ana  h");
-            break;
-        case 0xa5:
-            printf("ana  l");
-            break;
-        case 0xa6:
-            printf("ana  m");
-            break;
-        case 0xa7:
-            printf("ana  a");
-            break;
-        case 0xa8:
-            printf("xra  b");
-            break;
-        case 0xa9:
-            printf("xra  c");
-            break;
-        case 0xaa:
-            printf("xra  d");
-            break;
-        case 0xab:
-            printf("xra  e");
-            break;
-        case 0xac:
-            printf("xra  h");
-            break;
-        case 0xad:
-            printf("xra  l");
-            break;
-        case 0xae:
-            printf("xra  m");
-            break;
-        case 0xaf:
-            printf("xra  a");
-            break;
-        case 0xb0:
-            printf("ora  b");
-            break;
-        case 0xb1:
-            printf("ora  c");
-            break;
-        case 0xb2:
-            printf("ora  d");
-            break;
-        case 0xb3:
-            printf("ora  e");
-            break;
-        case 0xb4:
-            printf("ora  h");
-            break;
-        case 0xb5:
-            printf("ora  l");
-            break;
-        case 0xb6:
-            printf("ora  m");
-            break;
-        case 0xb7:
-            printf("ora  a");
-            break;
-        case 0xb8:
-            printf("cmp  b");
-            break;
-        case 0xb9:
-            printf("cmp  c");
-            break;
-        case 0xba:
-            printf("cmp  d");
-            break;
-        case 0xbb:
-            printf("cmp  e");
-            break;
-        case 0xbc:
-            printf("cmp  h");
-            break;
-        case 0xbd:
-            printf("cmp  l");
-            break;
-        case 0xbe:
-            printf("cmp  m");
-            break;
-        case 0xbf:
-            printf("cmp  a");
-            break;
+        // 0x80 - 0x87 add
+        // 0x88 - 0x8f adc
+        // 0x90 - 0x97 sub
+        // 0x98 - 0x9f sbb
+        // 0xa0 - 0xa7 ana
+        // 0xa8 - 0xaf xra
+        // 0xb0 - 0xb7 ora
+        // 0xb8 - 0xbf cmp
         case 0xc0:
             printf("rnz");
             break;
