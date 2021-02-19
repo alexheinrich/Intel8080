@@ -1,6 +1,8 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
+#include <string.h>
+#include <errno.h>
 
 char registers[8] = {'b', 'c', 'd', 'e', 'h', 'l', 'm', 'a'};
 
@@ -646,23 +648,40 @@ int main(int argc, char **argv)
 {
     FILE *f = fopen(argv[1], "rb");
     if (f == NULL) {
-        printf("error: Couldn't open %s\n", argv[1]);
+        printf("fopen() failed to open: %s. Errno: %s.\n", argv[1], strerror(errno));
         exit(1);
     }
 
-    fseek(f, 0L, SEEK_END);
-    // check return code
+    int fseek_end_status = fseek(f, 0L, SEEK_END);
+    if (fseek_end_status < 0) {
+        printf("fseek() failed. Errno: %s.\n", strerror(errno));
+        exit(1);
+    }
+    
     size_t fsize = (size_t) ftell(f);
-    // check return code
-    fseek(f, 0L, SEEK_SET);
-    // check return code
-    printf("%zu\n", fsize);
+    if (fsize < 0) {
+        printf("ftell() failed. Errno: %s.\n", strerror(errno));
+        exit(1);
+    }
+
+    int fseek_start_status = fseek(f, 0L, SEEK_SET);
+    if (fseek_start_status < 0) {
+        printf("fseek() failed. Errno: %s.\n", strerror(errno));
+        exit(1);
+    }
 
     unsigned char *buffer = malloc(fsize);
-    // check return code
+    if (buffer == NULL) {
+        printf("malloc() failed. Errno: %s.\n", strerror(errno));
+        exit(1);
+    }
 
-    fread(buffer, sizeof(unsigned char), fsize, f);
-    // check return code
+    size_t fread_status = fread(buffer, sizeof(unsigned char), fsize, f);
+    if (fread_status != (sizeof(unsigned char) * fsize)) {
+        printf("%zu", fread_status);
+        printf("fread() failed. Errno: %s.\n", strerror(errno));
+        exit(1);
+    }
 
     size_t pc = 0;
 
@@ -670,6 +689,11 @@ int main(int argc, char **argv)
         pc += Disassembly8080Op(buffer, pc);
     }
 
-    fclose(f);
+    int fclose_status = fclose(f);
+    if (fclose_status != 0) {
+        printf("fclose() failed. Errno: %s.\n", strerror(errno));
+        exit(1);
+    }
+
     return 0;
 }
