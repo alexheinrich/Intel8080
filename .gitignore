@@ -1,5 +1,3 @@
-spaceinvaders.e
-spaceinvaders.f
-spaceinvaders.g
-spaceinvaders.h
+rom/
+*.swp
 
