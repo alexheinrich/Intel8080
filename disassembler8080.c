@@ -84,6 +84,12 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
     if ((buffer[pc] & 0xf8) == 0xb8) {
         interpret210("cmp", buffer[pc]);
     }
+    
+    // rst
+    if ((buffer[pc] & 0xc7) == 0xc7) {
+        printf("rst  %02x", (buffer[pc] >> 3) & 0x07);
+    }
+
 
 
     switch(buffer[pc]) {
@@ -477,51 +483,52 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
 
 int main(int argc, char **argv)
 {
+    if (argc < 2) {
+        printf("Usage: %s <filename>\n", argv[0]);
+        exit(1);
+    }
+
     FILE *f = fopen(argv[1], "rb");
     if (f == NULL) {
         printf("fopen() failed to open: %s. Errno: %s.\n", argv[1], strerror(errno));
         exit(1);
     }
 
-    int fseek_end_status = fseek(f, 0L, SEEK_END);
-    if (fseek_end_status < 0) {
+    if (fseek(f, 0L, SEEK_END) < 0) {
         printf("fseek() failed. Errno: %s.\n", strerror(errno));
         exit(1);
     }
     
-    size_t fsize = (size_t) ftell(f);
-    if (fsize < 0) {
+    off_t fsize_off = ftell(f);
+    if (fsize_off < 0) {
         printf("ftell() failed. Errno: %s.\n", strerror(errno));
         exit(1);
     }
+    size_t fsize = (size_t) fsize_off;
 
-    int fseek_start_status = fseek(f, 0L, SEEK_SET);
-    if (fseek_start_status < 0) {
+    if (fseek(f, 0L, SEEK_SET) < 0) {
         printf("fseek() failed. Errno: %s.\n", strerror(errno));
         exit(1);
     }
 
-    unsigned char *buffer = malloc(fsize);
+    uint8_t *buffer = malloc(fsize);
     if (buffer == NULL) {
         printf("malloc() failed. Errno: %s.\n", strerror(errno));
         exit(1);
     }
 
-    size_t fread_status = fread(buffer, sizeof(unsigned char), fsize, f);
-    if (fread_status != (sizeof(unsigned char) * fsize)) {
-        printf("%zu", fread_status);
+    if (fread(buffer, sizeof(uint8_t), fsize, f) != fsize) {
         printf("fread() failed. Errno: %s.\n", strerror(errno));
         exit(1);
     }
 
     size_t pc = 0;
 
-    while(pc < fsize) {
+    while (pc < fsize) {
         pc += Disassembly8080Op(buffer, pc);
     }
 
-    int fclose_status = fclose(f);
-    if (fclose_status != 0) {
+    if (fclose(f) != 0) {
         printf("fclose() failed. Errno: %s.\n", strerror(errno));
         exit(1);
     }
