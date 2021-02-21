@@ -1,8 +1,8 @@
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <stdlib.h>
 
 char registers[8] = {'b', 'c', 'd', 'e', 'h', 'l', 'm', 'a'};
 
@@ -481,7 +481,7 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
     return opbytes;
 }
 
-int main(int argc, char **argv)
+int32_t main(int argc, char **argv)
 {
     if (argc < 2) {
         printf("Usage: %s <filename>\n", argv[0]);
