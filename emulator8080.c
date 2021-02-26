@@ -33,7 +33,7 @@ void unimplemented_instruction(state8080 *state)
 {
     (void) state;
     printf("Unimplemented Instruction: %02x\n", state->memory[state->pc]);
-    //exit(1);
+    exit(1);
 }
 
 uint8_t is_even_parity(uint8_t number)
@@ -86,24 +86,26 @@ uint8_t *lookup_register(uint8_t register_number, state8080 *state)
     // case 6
     //uint16_t address = (((uint16_t) state->h) << 8) + (uint16_t) state->l;
     uint16_t address = (uint16_t) (state->h << 8) + (uint16_t) state->l;
+    // unnecessary?
     uint16_t offset = address / sizeof(uint8_t);
-    //printf("%u\n", offset);
+    printf("Address: %u\n", offset);
+    printf("Memory: %02x\n", state->memory[offset]);
     return &(state->memory[offset]);
 }
 
 void emulate8080(state8080 *state)
 {
     unsigned char opcode = state->memory[state->pc];
+    uint8_t opbytes = 1;
 
     uint16_t buffer;
     
     // add (a <- (a + source))
     if ((opcode & 0xf8) == 0x80) {
-        printf("%x02\n", opcode);
         uint8_t source = opcode & 0x07;
-        uint8_t *source_address = lookup_register(source, state);
+        uint8_t source_address = *(lookup_register(source, state));
 
-        buffer = (uint16_t) state->a + (uint16_t) *source_address;
+        buffer = (uint16_t) state->a + (uint16_t) source_address;
 
         // is this the same as:
         // (buffer & 0xff) == 0
@@ -132,21 +134,35 @@ void emulate8080(state8080 *state)
         }
 
         state->a = buffer & 0xFF;
-        printf("add\n");
+        printf("add %u\n", state->a);
     }
 
     switch (opcode) {
-        case 0x00:          // nop
+        case 0x00: // nop
             break;
-        case 0x80:          // add b
+        case 0x01: // lxi b
+            state->b = state->memory[state->pc + 2];
+            state->c = state->memory[state->pc + 1];
+            opbytes = 3;
             break;
 
+        case 0x11: // lxi d
+            state->d = state->memory[state->pc + 2];
+            state->e = state->memory[state->pc + 1];
+            opbytes = 3;
+
+        case 0x21: // lxi h
+            state->h = state->memory[state->pc + 2];
+            state->l = state->memory[state->pc + 1];
+            opbytes = 3;
+
+
         default:
-            unimplemented_instruction(state);
+            //unimplemented_instruction(state);
             break;
     };
 
-    state->pc++;
+    state->pc = state->pc + opbytes;
 }
 
 int32_t main(int argc, char **argv)
