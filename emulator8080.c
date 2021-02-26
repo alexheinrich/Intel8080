@@ -4,30 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-char registers[8] = {'b', 'c', 'd', 'e', 'h', 'l', 'm', 'a'};
-
-typedef struct condition_flags {
-    uint8_t s; // sign
-    uint8_t z; // zero
-    uint8_t ac;// auxiliary carry over
-    uint8_t p; // is_even_parity
-    uint8_t c; // carry
-} condition_flags;
-
-typedef struct state8080 {
-    uint8_t a;
-    uint8_t b;
-    uint8_t c;
-    uint8_t d;
-    uint8_t e;
-    uint8_t h;
-    uint8_t l;
-    size_t pc;
-    uint16_t sp;
-    uint8_t *memory;
-    struct condition_flags cf;
-    uint8_t interrupts_enabled;
-} state8080;
+#include "emulator8080.h"
+#include "debug8080.h"
 
 void unimplemented_instruction(state8080 *state)
 {
@@ -135,6 +113,7 @@ void emulate8080(state8080 *state)
 
         state->a = buffer & 0xFF;
         printf("add %u\n", state->a);
+        print_state8080(state);
     }
 
     switch (opcode) {
