@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+char registers[8] = {'b', 'c', 'd', 'e', 'h', 'l', 'm', 'a'};
+
 typedef struct condition_flags {
     uint8_t s; // sign
     uint8_t z; // zero
@@ -48,46 +50,95 @@ uint8_t is_even_parity(uint8_t number)
   return is_even;
 }
 
+uint8_t *lookup_register(uint8_t register_number, state8080 *state)
+{
+    switch (register_number) {
+        case 0:
+            return &(state->b);
+            break;
+        case 1:
+            return &(state->c);
+            break;
+        case 2:
+            return &(state->d);
+            break;
+        case 3:
+            return &(state->e);
+            break;
+        case 4:
+            return &(state->h);
+            break;
+        case 5:
+            return &(state->l);
+            break;
+        case 6:
+            // access memory at (HL)
+            break;
+        case 7:
+            return &(state->a);
+            break;
+        default:
+            printf("Undefined Register");
+            exit(1);
+            break;
+    }
+
+    // case 6
+    //uint16_t address = (((uint16_t) state->h) << 8) + (uint16_t) state->l;
+    uint16_t address = (uint16_t) (state->h << 8) + (uint16_t) state->l;
+    uint16_t offset = address / sizeof(uint8_t);
+    //printf("%u\n", offset);
+    return &(state->memory[offset]);
+}
+
 void emulate8080(state8080 *state)
 {
-    unsigned char *opcode = &state->memory[state->pc];
+    unsigned char opcode = state->memory[state->pc];
 
     uint16_t buffer;
+    
+    // add (a <- (a + source))
+    if ((opcode & 0xf8) == 0x80) {
+        printf("%x02\n", opcode);
+        uint8_t source = opcode & 0x07;
+        uint8_t *source_address = lookup_register(source, state);
 
-    switch (*opcode) {
+        buffer = (uint16_t) state->a + (uint16_t) *source_address;
+
+        // is this the same as:
+        // (buffer & 0xff) == 0
+        if (buffer == 0) {
+            state->cf.z = 1;
+        } else {
+            state->cf.z = 0;
+        }
+
+        if (buffer & 0x80) {
+            state->cf.s = 1;
+        } else {
+            state->cf.s = 0;
+        }
+
+        if (buffer > 0xff) {
+            state->cf.c = 1;
+        } else {
+            state->cf.c = 0;
+        }
+
+        if (is_even_parity((uint8_t) buffer)) {
+            state->cf.p = 1;
+        } else {
+            state->cf.p = 0;
+        }
+
+        state->a = buffer & 0xFF;
+        printf("add\n");
+    }
+
+    switch (opcode) {
         case 0x00:          // nop
             break;
         case 0x80:          // add b
-            buffer = (uint16_t) state->a + (uint16_t) state->b;
-
-            // is this the same as:
-            // (buffer & 0xff) == 0
-            if (buffer == 0) {
-                state->cf.z = 1;
-            } else {
-                state->cf.z = 0;
-            }
-
-            if (buffer & 0x80) {
-                state->cf.s = 1;
-            } else {
-                state->cf.s = 0;
-            }
-
-            if (buffer > 0xff) {
-                state->cf.c = 1;
-            } else {
-                state->cf.c = 0;
-            }
-
-            if (is_even_parity((uint8_t) buffer)) {
-                state->cf.p = 1;
-            } else {
-                state->cf.p = 0;
-            }
-
-            state->a = buffer & 0xFF;
-            printf("add\n");
             break;
 
         default:
