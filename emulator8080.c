@@ -1,5 +1,6 @@
 #include "emulator8080.h"
 #include "debug8080.h"
+#include "disassembler8080.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -8,13 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-void unimplemented_instruction(state8080 *state)
-{
-    (void) state;
-    printf("Unimplemented Instruction: %02x\n", state->memory[state->pc]);
-    exit(1);
-}
 
 bool is_even_parity(uint8_t number)
 {
@@ -47,20 +41,13 @@ uint8_t *lookup_register(uint8_t register_number, state8080 *state)
             return &state->l;
         case 6: 
             {
-                // case 6
-                //uint16_t address = (((uint16_t) state->h) << 8) + (uint16_t) state->l;
-                //uint16_t address = (uint16_t) (state->h << 8) + (uint16_t) state->l;
                 uint16_t address = (uint16_t) ((state->h << 8) + state->l);
-                // unnecessary?
-                printf("Address: %u\n", address);
-                printf("Memory: %02x\n", state->memory[address]);
                 return &state->memory[address];
-                //return state->memory + address;
             };
         case 7:
             return &state->a;
         default:
-            printf("Undefined Register");
+            printf("Error: Undefined Register.\n");
             exit(1);
     }
 
@@ -86,8 +73,9 @@ void emulate8080(state8080 *state)
         state->cf.c = buffer > 0xff;
         state->cf.p = is_even_parity(state->a);
 
-        printf("add %02x\n", state->a);
+        disassemble_op8080(state->memory, state->pc);
         print_state8080(state);
+
     }
 
     switch (opcode) {
@@ -120,7 +108,7 @@ void emulate8080(state8080 *state)
     state->pc = state->pc + opbytes;
 }
 
-int32_t main(int argc, char **argv)
+int32_t main(int32_t argc, char *argv[])
 {
     if (argc < 2) {
         printf("Usage: %s <filename>\n", argv[0]);
@@ -181,12 +169,21 @@ int32_t main(int argc, char **argv)
         },
         .interrupts_enabled = 0
     };
-
-    // Todo: loop until hlt or endless loop?
-    while (state.pc < fsize) {
-        emulate8080(&state);
+    
+    if (argc > 2 && strcmp(argv[2], "-d") == 0) {
+        // Disassemble 
+        while (state.pc < fsize) {
+            state.pc += disassemble_op8080(state.memory, state.pc);
+        }
+    } else {
+        // Emulate
+        while (state.pc < fsize) {
+            emulate8080(&state);
+        }
     }
 
+
+    // disassemble
     if (fclose(f) != 0) {
         printf("fclose() failed. Errno: %s.\n", strerror(errno));
         exit(1);
