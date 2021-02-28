@@ -64,6 +64,7 @@ void emulate8080(state8080 *state)
     if ((opcode & 0xf8) == 0x80) {
         uint8_t source = opcode & 0x07;
         uint8_t source_value = *lookup_register(source, state);
+        print_state8080(state, false);
 
         buffer = (uint16_t) (state->a + source_value);
 
@@ -73,9 +74,7 @@ void emulate8080(state8080 *state)
         state->cf.c = buffer > 0xff;
         state->cf.p = is_even_parity(state->a);
 
-        disassemble_op8080(state->memory, state->pc);
-        print_state8080(state);
-
+        print_state8080(state, true);
     }
 
     switch (opcode) {
