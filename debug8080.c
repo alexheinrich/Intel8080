@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-const bool show_flags = false;
+const bool show_flags = true;
 
 void print_registers8080(state8080 *state)
 {
@@ -35,6 +35,7 @@ void print_state8080(state8080 *state, bool after_op)
     if (after_op == false) {
         printf("====================\n");
         printf("Operation:\n");
+        printf("PC: %zu\n", state->pc);
         disassemble_op8080(state->memory, state->pc);
     }
 

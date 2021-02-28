@@ -87,9 +87,11 @@ void emulate8080(state8080 *state)
             break;
 
         case 0x11: // lxi d
+            print_state8080(state, false);
             state->d = state->memory[state->pc + 2];
             state->e = state->memory[state->pc + 1];
             opbytes = 3;
+            print_state8080(state, true);
             break;
 
         case 0x21: // lxi h
