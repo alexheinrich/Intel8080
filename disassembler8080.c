@@ -18,7 +18,7 @@ void interpret210(char *opcode_name, uint8_t opcode)
     printf("%s  %c", opcode_name, registers[source]);
 }
 
-size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
+size_t disassemble_op8080(unsigned char *buffer, size_t pc)
 {
     size_t opbytes = 1;
     printf("%02x ", buffer[pc]);
@@ -481,59 +481,3 @@ size_t Disassembly8080Op(unsigned char *buffer, size_t pc)
     return opbytes;
 }
 
-int32_t main(int argc, char **argv)
-{
-    if (argc < 2) {
-        printf("Usage: %s <filename>\n", argv[0]);
-        exit(1);
-    }
-
-    FILE *f = fopen(argv[1], "rb");
-    if (f == NULL) {
-        printf("fopen() failed to open: %s. Errno: %s.\n", argv[1], strerror(errno));
-        exit(1);
-    }
-
-    if (fseek(f, 0L, SEEK_END) < 0) {
-        printf("fseek() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
-    }
-    
-    off_t fsize_off = ftell(f);
-    if (fsize_off < 0) {
-        printf("ftell() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
-    }
-    size_t fsize = (size_t) fsize_off;
-
-    if (fseek(f, 0L, SEEK_SET) < 0) {
-        printf("fseek() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
-    }
-
-    uint8_t *buffer = malloc(fsize);
-    if (buffer == NULL) {
-        printf("malloc() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
-    }
-
-    if (fread(buffer, sizeof(uint8_t), fsize, f) != fsize) {
-        printf("fread() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
-    }
-
-    size_t pc = 0;
-
-    while (pc < fsize) {
-        pc += Disassembly8080Op(buffer, pc);
-    }
-
-    if (fclose(f) != 0) {
-        printf("fclose() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
-    }
-
-    free(buffer);
-
-    return 0;
-}
