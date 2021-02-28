@@ -1,11 +1,13 @@
-#include <errno.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
 #include "emulator8080.h"
 #include "debug8080.h"
+
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 void unimplemented_instruction(state8080 *state)
 {
@@ -14,61 +16,54 @@ void unimplemented_instruction(state8080 *state)
     exit(1);
 }
 
-uint8_t is_even_parity(uint8_t number)
+bool is_even_parity(uint8_t number)
 {
-  uint8_t is_even = 1;
-  for (int8_t i = 0; i < 8; i++) {
-    if (number & 0x01) {
-      is_even = !is_even;
+    bool is_even = true;
+    while (number != 0) {
+        if (number & 0x01) {
+            is_even = !is_even;
+        }
+
+        number = number >> 1;
     }
 
-    number = number >> 1;
-  }
-
-  return is_even;
+    return is_even;
 }
 
 uint8_t *lookup_register(uint8_t register_number, state8080 *state)
 {
     switch (register_number) {
         case 0:
-            return &(state->b);
-            break;
+            return &state->b;
         case 1:
-            return &(state->c);
-            break;
+            return &state->c;
         case 2:
-            return &(state->d);
-            break;
+            return &state->d;
         case 3:
-            return &(state->e);
-            break;
+            return &state->e;
         case 4:
-            return &(state->h);
-            break;
+            return &state->h;
         case 5:
-            return &(state->l);
-            break;
-        case 6:
-            // access memory at (HL)
-            break;
+            return &state->l;
+        case 6: 
+            {
+                // case 6
+                //uint16_t address = (((uint16_t) state->h) << 8) + (uint16_t) state->l;
+                //uint16_t address = (uint16_t) (state->h << 8) + (uint16_t) state->l;
+                uint16_t address = (uint16_t) ((state->h << 8) + state->l);
+                // unnecessary?
+                printf("Address: %u\n", address);
+                printf("Memory: %02x\n", state->memory[address]);
+                return &state->memory[address];
+                //return state->memory + address;
+            };
         case 7:
-            return &(state->a);
-            break;
+            return &state->a;
         default:
             printf("Undefined Register");
             exit(1);
-            break;
     }
 
-    // case 6
-    //uint16_t address = (((uint16_t) state->h) << 8) + (uint16_t) state->l;
-    uint16_t address = (uint16_t) (state->h << 8) + (uint16_t) state->l;
-    // unnecessary?
-    uint16_t offset = address / sizeof(uint8_t);
-    printf("Address: %u\n", offset);
-    printf("Memory: %02x\n", state->memory[offset]);
-    return &(state->memory[offset]);
 }
 
 void emulate8080(state8080 *state)
@@ -77,42 +72,21 @@ void emulate8080(state8080 *state)
     uint8_t opbytes = 1;
 
     uint16_t buffer;
-    
+
     // add (a <- (a + source))
     if ((opcode & 0xf8) == 0x80) {
         uint8_t source = opcode & 0x07;
-        uint8_t source_address = *(lookup_register(source, state));
+        uint8_t source_value = *lookup_register(source, state);
 
-        buffer = (uint16_t) state->a + (uint16_t) source_address;
+        buffer = (uint16_t) (state->a + source_value);
 
-        // is this the same as:
-        // (buffer & 0xff) == 0
-        if (buffer == 0) {
-            state->cf.z = 1;
-        } else {
-            state->cf.z = 0;
-        }
+        state->a = (uint8_t) buffer;
+        state->cf.z = state->a == 0;
+        state->cf.s = (state->a & 0x80) == 0x80;
+        state->cf.c = buffer > 0xff;
+        state->cf.p = is_even_parity(state->a);
 
-        if (buffer & 0x80) {
-            state->cf.s = 1;
-        } else {
-            state->cf.s = 0;
-        }
-
-        if (buffer > 0xff) {
-            state->cf.c = 1;
-        } else {
-            state->cf.c = 0;
-        }
-
-        if (is_even_parity((uint8_t) buffer)) {
-            state->cf.p = 1;
-        } else {
-            state->cf.p = 0;
-        }
-
-        state->a = buffer & 0xFF;
-        printf("add %u\n", state->a);
+        printf("add %02x\n", state->a);
         print_state8080(state);
     }
 
@@ -129,17 +103,19 @@ void emulate8080(state8080 *state)
             state->d = state->memory[state->pc + 2];
             state->e = state->memory[state->pc + 1];
             opbytes = 3;
+            break;
 
         case 0x21: // lxi h
             state->h = state->memory[state->pc + 2];
             state->l = state->memory[state->pc + 1];
             opbytes = 3;
+            break;
 
 
         default:
             //unimplemented_instruction(state);
             break;
-    };
+    }
 
     state->pc = state->pc + opbytes;
 }
@@ -161,7 +137,7 @@ int32_t main(int argc, char **argv)
         printf("fseek() failed. Errno: %s.\n", strerror(errno));
         exit(1);
     }
-    
+
     off_t fsize_off = ftell(f);
     if (fsize_off < 0) {
         printf("ftell() failed. Errno: %s.\n", strerror(errno));
@@ -206,6 +182,7 @@ int32_t main(int argc, char **argv)
         .interrupts_enabled = 0
     };
 
+    // Todo: loop until hlt or endless loop?
     while (state.pc < fsize) {
         emulate8080(&state);
     }
