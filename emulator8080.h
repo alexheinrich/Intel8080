@@ -9,7 +9,7 @@ typedef struct {
     bool z; // zero
     bool ac;// auxiliary carry over
     bool p; // parity
-    bool c; // carry over
+    bool cy; // carry over
 } condition_flags;
 
 typedef struct {

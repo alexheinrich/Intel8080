@@ -53,6 +53,11 @@ uint8_t *lookup_register(uint8_t register_number, state8080 *state)
 
 }
 
+uint16_t address_from_register_pair(uint8_t first_register, uint8_t second_register)
+{
+    return (uint16_t) ((first_register << 8) + second_register);
+}
+
 void emulate8080(state8080 *state)
 {
     unsigned char opcode = state->memory[state->pc];
@@ -60,18 +65,33 @@ void emulate8080(state8080 *state)
 
     uint16_t buffer;
 
-    // add (a <- (a + source))
+    // add (a <- a + source)
     if ((opcode & 0xf8) == 0x80) {
+        print_state8080(state, false);
         uint8_t source = opcode & 0x07;
         uint8_t source_value = *lookup_register(source, state);
-        print_state8080(state, false);
 
         buffer = (uint16_t) (state->a + source_value);
 
         state->a = (uint8_t) buffer;
-        state->cf.z = state->a == 0;
+        state->cf.z = state->a == 0x00;
         state->cf.s = (state->a & 0x80) == 0x80;
-        state->cf.c = buffer > 0xff;
+        state->cf.cy = buffer > 0xff;
+        state->cf.p = is_even_parity(state->a);
+        print_state8080(state, true);
+    }
+
+    // adc (a <- a + source + cy)
+    if ((opcode & 0xf8) == 0x88) {
+        print_state8080(state, false);
+        uint8_t source = opcode & 0x07;
+        uint8_t source_value = *lookup_register(source, state);
+
+        buffer = (uint16_t) (state->a + source_value + state->cf.cy);
+        state->a = (uint8_t) buffer;
+        state->cf.z = state->a == 0x00;
+        state->cf.s = (state->a & 0x80) == 0x80;
+        state->cf.cy = buffer > 0xff;
         state->cf.p = is_even_parity(state->a);
 
         print_state8080(state, true);
@@ -85,13 +105,16 @@ void emulate8080(state8080 *state)
             state->c = state->memory[state->pc + 1];
             opbytes = 3;
             break;
+        case 0x02: // stax b
+            {
+                uint16_t address = address_from_register_pair(state->b, state->c);
+                state->memory[address] = state->a;
+            }
 
         case 0x11: // lxi d
-            print_state8080(state, false);
             state->d = state->memory[state->pc + 2];
             state->e = state->memory[state->pc + 1];
             opbytes = 3;
-            print_state8080(state, true);
             break;
 
         case 0x21: // lxi h
@@ -166,7 +189,7 @@ int32_t main(int32_t argc, char *argv[])
             .z = 0,
             .ac = 0,
             .p = 0,
-            .c = 0
+            .cy = 0
         },
         .interrupts_enabled = 0
     };
