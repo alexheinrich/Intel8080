@@ -27,7 +27,7 @@ void print_condition_flags8080(state8080 *state)
     printf("Zero:   %d\n", state->cf.z);
     printf("Aux CY: %d\n", state->cf.ac);
     printf("Parity: %d\n", state->cf.p);
-    printf("CY:     %d\n", state->cf.c);
+    printf("CY:     %d\n", state->cf.cy);
 }
 
 void print_state8080(state8080 *state, bool after_op)
