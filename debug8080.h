@@ -2,6 +2,6 @@
 
 #include "emulator8080.h"
 
-#include <stdbool.h>
+void print_state_pre(const state8080 *state);
+void print_state_post(const state8080 *state);
 
-void print_state8080(state8080 *state, bool after_op);

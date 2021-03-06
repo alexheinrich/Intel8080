@@ -12,16 +12,11 @@
 
 bool is_even_parity(uint8_t number)
 {
-    bool is_even = true;
-    while (number != 0) {
-        if (number & 0x01) {
-            is_even = !is_even;
-        }
+    uint32_t t1 = number ^ (number >> 4);
+    uint32_t t2 = t1 ^ (t1 >> 2);
+    uint32_t t3 = t2 ^ (t2 >> 1);
 
-        number = number >> 1;
-    }
-
-    return is_even;
+    return !(t3 & 0x01);
 }
 
 uint8_t *lookup_register(uint8_t register_number, state8080 *state)
@@ -43,7 +38,7 @@ uint8_t *lookup_register(uint8_t register_number, state8080 *state)
             {
                 uint16_t address = (uint16_t) ((state->h << 8) + state->l);
                 return &state->memory[address];
-            };
+            }
         case 7:
             return &state->a;
         default:
@@ -64,10 +59,10 @@ void emulate8080(state8080 *state)
     uint8_t opbytes = 1;
 
     uint16_t buffer;
+    print_state_pre(state);
 
     // add (a <- a + source)
     if ((opcode & 0xf8) == 0x80) {
-        print_state8080(state, false);
         uint8_t source = opcode & 0x07;
         uint8_t source_value = *lookup_register(source, state);
 
@@ -78,12 +73,10 @@ void emulate8080(state8080 *state)
         state->cf.s = (state->a & 0x80) == 0x80;
         state->cf.cy = buffer > 0xff;
         state->cf.p = is_even_parity(state->a);
-        print_state8080(state, true);
     }
 
     // adc (a <- a + source + cy)
     if ((opcode & 0xf8) == 0x88) {
-        print_state8080(state, false);
         uint8_t source = opcode & 0x07;
         uint8_t source_value = *lookup_register(source, state);
 
@@ -93,8 +86,6 @@ void emulate8080(state8080 *state)
         state->cf.s = (state->a & 0x80) == 0x80;
         state->cf.cy = buffer > 0xff;
         state->cf.p = is_even_parity(state->a);
-
-        print_state8080(state, true);
     }
 
     switch (opcode) {
@@ -130,6 +121,8 @@ void emulate8080(state8080 *state)
     }
 
     state->pc = state->pc + opbytes;
+
+    print_state_post(state);
 }
 
 int32_t main(int32_t argc, char *argv[])
