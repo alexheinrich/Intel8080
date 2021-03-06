@@ -6,7 +6,7 @@
 
 const bool show_flags = true;
 
-void print_registers8080(state8080 *state)
+void print_registers8080(const state8080 *state)
 {
     printf("--------------------\n");
     printf("Registers:\n");
@@ -19,7 +19,7 @@ void print_registers8080(state8080 *state)
     printf("l: %u\n", state->l);
 }
 
-void print_condition_flags8080(state8080 *state)
+void print_condition_flags8080(const state8080 *state)
 {
     printf("--------------------\n");
     printf("Condition Flags:\n");
@@ -30,14 +30,12 @@ void print_condition_flags8080(state8080 *state)
     printf("CY:     %d\n", state->cf.cy);
 }
 
-void print_state8080(state8080 *state, bool after_op)
+void print_state_pre(const state8080 *state)
 {
-    if (after_op == false) {
-        printf("====================\n");
-        printf("Operation:\n");
-        printf("PC: %zu\n", state->pc);
-        disassemble_op8080(state->memory, state->pc);
-    }
+    printf("====================\n");
+    printf("Operation:\n");
+    printf("PC: %zu\n", state->pc);
+    disassemble_op8080(state->memory, state->pc);
 
     print_registers8080(state);
 
@@ -45,7 +43,16 @@ void print_state8080(state8080 *state, bool after_op)
         print_condition_flags8080(state);
     }
 
-    if (after_op == true) {
-        printf("====================\n\n");
-    }
 }
+
+void print_state_post(const state8080 *state)
+{
+    print_registers8080(state);
+
+    if (show_flags) {
+        print_condition_flags8080(state);
+    }
+
+    printf("====================\n\n");
+}
+
