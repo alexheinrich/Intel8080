@@ -35,6 +35,13 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
         }
     }
 
+    // mvi
+    if ((buffer[pc] & 0xc7) == 0x06) {
+        uint8_t destination = (buffer[pc] >> 3) & 0x07;
+        printf("mvi  %c, #%02x", registers[destination], buffer[pc+1]);
+        opbytes = 2;
+    }
+
     // inr
     if ((buffer[pc] & 0xc7) == 0x04) {
         interpret654("inr", buffer[pc]);
@@ -106,10 +113,7 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
         case 0x03:
             printf("inx  b");
             break;
-        case 0x06:
-            printf("mvi  b, #%02x", buffer[pc+1]);
-            opbytes = 2;
-            break;
+        // case 0x06: mvi b
         case 0x07:
             printf("rlc");
             break;
@@ -124,10 +128,7 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
         case 0x0b:
             printf("dcx  b");
             break;
-        case 0x0e:
-            printf("mvi  c, #%02x", buffer[pc+1]);
-            opbytes = 2;
-            break;
+        // case 0x0e: mvi c
         case 0x0f:
             printf("rrc");
             break;
@@ -143,10 +144,7 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
         case 0x13:
             printf("inx  d");
             break;
-        case 0x16:
-            printf("mvi  d, #%02x", buffer[pc+1]);
-            opbytes = 2;
-            break;
+        // case 0x16: mvi d
         case 0x17:
             printf("ral");
             break;
@@ -161,10 +159,7 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
         case 0x1b:
             printf("dcx  d");
             break;
-        case 0x1e:
-            printf("mvi  e, #%02x", buffer[pc+1]);
-            opbytes = 2;
-            break;
+        // case 0x1e: mvi e
         case 0x1f:
             printf("rar");
             break;
@@ -182,10 +177,7 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
         case 0x23:
             printf("inx  h");
             break;
-        case 0x26:
-            printf("mvi  h, #%02x", buffer[pc+1]);
-            opbytes = 2;
-            break;
+        // case 0x26: mvi h
         case 0x27:
             printf("daa");
             break;
@@ -201,10 +193,7 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
         case 0x2b:
             printf("dcx  h");
             break;
-        case 0x2e:
-            printf("mvi  l, #%02x", buffer[pc+1]);
-            opbytes = 2;
-            break;
+        // case 0x2e: mvi l
         case 0x2f:
             printf("cma");
             break;
@@ -222,10 +211,7 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
         case 0x33:
             printf("inx  sp");
             break;
-        case 0x36:
-            printf("mvi  m, #%02x%02x", buffer[pc+2], buffer[pc+1]);
-            break;
-
+        // case 0x36: mvi m
         case 0x37:
             printf("stc");
             break;
@@ -235,16 +221,13 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
             printf("dad  sp");
             break;
         case 0x3a:
-            printf("lda  #%0x02%0x02", buffer[pc+2], buffer[pc+1]);
+            printf("lda  #%02x%02x", buffer[pc+2], buffer[pc+1]);
             opbytes = 3;
             break;
         case 0x3b:
             printf("dcx  sp");
             break;
-        case 0x3e:
-            printf("mvi  a, #%0x02", buffer[pc+1]);
-            opbytes = 2;
-            break;
+        // case 0x3e: mvi a
         case 0x3f:
             printf("cmc");
             break;
