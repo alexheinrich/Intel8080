@@ -113,12 +113,13 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
         case 0x03:
             printf("inx  b");
             break;
+        // case 0x04: inr b
+        // case 0x05: dcr b
         // case 0x06: mvi b
         case 0x07:
             printf("rlc");
             break;
-        case 0x08:
-            break;
+        // case 0x08: nop
         case 0x09:
             printf("dad  b");
             break;
