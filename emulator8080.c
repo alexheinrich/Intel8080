@@ -37,6 +37,7 @@ uint8_t *lookup_register(uint8_t register_number, state8080 *state)
         case 6: 
             {
                 uint16_t address = (uint16_t) ((state->h << 8) + state->l);
+                printf("Mem: 0x%02x\n", state->memory[address]);
                 return &state->memory[address];
             }
         case 7:
@@ -53,13 +54,29 @@ uint16_t address_from_register_pair(uint8_t first_register, uint8_t second_regis
     return (uint16_t) ((first_register << 8) + second_register);
 }
 
-void emulate8080(state8080 *state)
+bool emulate8080(state8080 *state)
 {
     unsigned char opcode = state->memory[state->pc];
     uint8_t opbytes = 1;
 
     uint16_t buffer;
     print_state_pre(state);
+
+    // mov (and hlt)
+    if ((opcode & 0xc0) == 0x40) {
+        uint8_t source = opcode & 0x07;
+        uint8_t source_value = *lookup_register(source, state);
+        uint8_t destination = (opcode >> 3) & 0x07;
+        uint8_t *destination_pointer = lookup_register(destination, state);
+
+        // hlt
+        if (source == 0x06 && destination == 0x06) {
+            return false;
+        } else {
+            *destination_pointer = source_value;
+        }
+    }
+
 
     // add (a <- a + source)
     if ((opcode & 0xf8) == 0x80) {
@@ -205,6 +222,14 @@ void emulate8080(state8080 *state)
                 uint16_t address = address_from_register_pair(state->b, state->c);
                 state->memory[address] = state->a;
             }
+        case 0x03: // inx b
+            state->b = (uint8_t) (state->b + 1);
+            state->c = (uint8_t) (state->c + 1);
+            break;
+
+        // case 0x04: inr b
+        // case 0x05: dcr b
+        case 0x06: // mvi b, d8
 
         case 0x11: // lxi d
             state->d = state->memory[state->pc + 2];
@@ -227,6 +252,13 @@ void emulate8080(state8080 *state)
     state->pc = state->pc + opbytes;
 
     print_state_post(state);
+    return true;
+}
+
+void exit_and_free(uint8_t *buffer)
+{
+    free(buffer);
+    exit(1);
 }
 
 int32_t main(int32_t argc, char *argv[])
@@ -262,12 +294,12 @@ int32_t main(int32_t argc, char *argv[])
     uint8_t *buffer = malloc(fsize);
     if (buffer == NULL) {
         printf("malloc() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
+        exit_and_free(buffer);
     }
 
     if (fread(buffer, sizeof(uint8_t), fsize, f) != fsize) {
         printf("fread() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
+        exit_and_free(buffer);
     }
 
     state8080 state = {
@@ -298,8 +330,9 @@ int32_t main(int32_t argc, char *argv[])
         }
     } else {
         // Emulate
-        while (state.pc < fsize) {
-            emulate8080(&state);
+        bool emulate = true;
+        while (emulate) {
+            emulate = emulate8080(&state);
         }
     }
 
@@ -307,7 +340,7 @@ int32_t main(int32_t argc, char *argv[])
     // disassemble
     if (fclose(f) != 0) {
         printf("fclose() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
+        exit_and_free(buffer);
     }
 
     free(buffer);
