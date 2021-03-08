@@ -85,6 +85,30 @@ bool emulate8080(state8080 *state)
         opbytes = 2;
     }
 
+    // inr
+    if ((opcode & 0xc7) == 0x04) {
+        uint8_t destination = opcode >> 3 & 0x07;
+        uint8_t *destination_pointer = lookup_register(destination, state);
+
+        buffer = *destination_pointer + 1;
+        *destination_pointer = (uint8_t) buffer;
+        state->cf.z = *destination_pointer == 0x00;
+        state->cf.s = (*destination_pointer & 0x80) == 0x80;
+        state->cf.p = is_even_parity(*destination_pointer);
+    }
+    
+    // dcr
+    if ((opcode & 0xc7) == 0x05) {
+        uint8_t destination = opcode >> 3 & 0x07;
+        uint8_t *destination_pointer = lookup_register(destination, state);
+
+        buffer = *destination_pointer - 1;
+        *destination_pointer = (uint8_t) buffer;
+        state->cf.z = *destination_pointer == 0x00;
+        state->cf.s = (*destination_pointer & 0x80) == 0x80;
+        state->cf.p = is_even_parity(*destination_pointer);
+    }
+
     // add (a <- a + source)
     if ((opcode & 0xf8) == 0x80) {
         uint8_t source = opcode & 0x07;
@@ -191,30 +215,6 @@ bool emulate8080(state8080 *state)
         state->cf.p = is_even_parity(result);
     }
 
-    // inr
-    if ((opcode & 0xc7) == 0x04) {
-        uint8_t destination = opcode >> 3 & 0x07;
-        uint8_t *destination_pointer = lookup_register(destination, state);
-
-        buffer = *destination_pointer + 1;
-        *destination_pointer = (uint8_t) buffer;
-        state->cf.z = *destination_pointer == 0x00;
-        state->cf.s = (*destination_pointer & 0x80) == 0x80;
-        state->cf.p = is_even_parity(*destination_pointer);
-    }
-    
-    // dcr
-    if ((opcode & 0xc7) == 0x05) {
-        uint8_t destination = opcode >> 3 & 0x07;
-        uint8_t *destination_pointer = lookup_register(destination, state);
-
-        buffer = *destination_pointer - 1;
-        *destination_pointer = (uint8_t) buffer;
-        state->cf.z = *destination_pointer == 0x00;
-        state->cf.s = (*destination_pointer & 0x80) == 0x80;
-        state->cf.p = is_even_parity(*destination_pointer);
-    }
-
 
     switch (opcode) {
         case 0x00: // nop
@@ -236,7 +236,11 @@ bool emulate8080(state8080 *state)
 
         // case 0x04: inr b
         // case 0x05: dcr b
-        case 0x06: // mvi b, d8
+        // case 0x06: mvi b, d8
+
+        case 0x07:
+            // rlc
+            break;
 
         case 0x11: // lxi d
             state->d = state->memory[state->pc + 2];
