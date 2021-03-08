@@ -1,6 +1,7 @@
 rom/
 *.swp
 *.o
+*.dSYM
 .DS_STORE
 disassembler8080
 emulator8080
