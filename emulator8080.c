@@ -81,12 +81,116 @@ void emulate8080(state8080 *state)
         uint8_t source_value = *lookup_register(source, state);
 
         buffer = (uint16_t) (state->a + source_value + state->cf.cy);
+
         state->a = (uint8_t) buffer;
         state->cf.z = state->a == 0x00;
         state->cf.s = (state->a & 0x80) == 0x80;
         state->cf.cy = buffer > 0xff;
         state->cf.p = is_even_parity(state->a);
     }
+
+    // sub (a <- a - source)
+    if ((opcode & 0xf8) == 0x90) {
+        uint8_t source = opcode & 0x07;
+        uint8_t source_value = *lookup_register(source, state);
+
+        buffer = state->a + (uint8_t) ~source_value + 0x01;
+
+        state->a = (uint8_t) buffer;
+        state->cf.z = state->a == 0x00;
+        state->cf.s = (state->a & 0x80) == 0x80;
+        state->cf.cy = !(buffer > 0xff);
+        state->cf.p = is_even_parity(state->a);
+    }
+    
+    // sbb (a <- a - source)
+    if ((opcode & 0xf8) == 0x98) {
+        uint8_t source = opcode & 0x07;
+        uint8_t source_value = *lookup_register(source, state);
+
+        buffer = state->a + (uint8_t) ~(source_value + state->cf.cy) + 0x01;
+
+        state->a = (uint8_t) buffer;
+        state->cf.z = state->a == 0x00;
+        state->cf.s = (state->a & 0x80) == 0x80;
+        state->cf.cy = !(buffer > 0xff);
+        state->cf.p = is_even_parity(state->a);
+    }
+
+    // ana (a <- a & source)
+    if ((opcode & 0xf8) == 0xa0) {
+        uint8_t source = opcode & 0x07;
+        uint8_t source_value = *lookup_register(source, state);
+
+        state->a = (uint8_t) (state->a & source_value);
+        state->cf.z = state->a == 0x00;
+        state->cf.s = (state->a & 0x80) == 0x80;
+        state->cf.cy = false;
+        state->cf.p = is_even_parity(state->a);
+    }
+
+    // xra (a <- a ^ source)
+    if ((opcode & 0xf8) == 0xa8) {
+        uint8_t source = opcode & 0x07;
+        uint8_t source_value = *lookup_register(source, state);
+
+        state->a = (uint8_t) (state->a ^ source_value);
+        state->cf.z = state->a == 0x00;
+        state->cf.s = (state->a & 0x80) == 0x80;
+        state->cf.cy = false;
+        state->cf.p = is_even_parity(state->a);
+    }
+
+    // ora (a <- a | source)
+    if ((opcode & 0xf8) == 0xb0) {
+        uint8_t source = opcode & 0x07;
+        uint8_t source_value = *lookup_register(source, state);
+
+        state->a = (uint8_t) (state->a | source_value);
+        state->cf.z = state->a == 0x00;
+        state->cf.s = (state->a & 0x80) == 0x80;
+        state->cf.cy = false;
+        state->cf.p = is_even_parity(state->a);
+    }
+
+    // cmp (a < source)
+    if ((opcode & 0xf8) == 0xb8) {
+        uint8_t source = opcode & 0x07;
+        uint8_t source_value = *lookup_register(source, state);
+
+        buffer = state->a + (uint8_t) ~source_value + 0x01;
+
+        uint8_t result = (uint8_t) buffer;
+        state->cf.z = result == 0x00;
+        state->cf.s = (result & 0x80) == 0x80; 
+        state->cf.cy = !(buffer > 0xff);
+        state->cf.p = is_even_parity(result);
+    }
+
+    // inr
+    if ((opcode & 0xc7) == 0x04) {
+        uint8_t destination = opcode >> 3 & 0x07;
+        uint8_t *destination_pointer = lookup_register(destination, state);
+
+        buffer = *destination_pointer + 1;
+        *destination_pointer = (uint8_t) buffer;
+        state->cf.z = *destination_pointer == 0x00;
+        state->cf.s = (*destination_pointer & 0x80) == 0x80;
+        state->cf.p = is_even_parity(*destination_pointer);
+    }
+    
+    // dcr
+    if ((opcode & 0xc7) == 0x05) {
+        uint8_t destination = opcode >> 3 & 0x07;
+        uint8_t *destination_pointer = lookup_register(destination, state);
+
+        buffer = *destination_pointer - 1;
+        *destination_pointer = (uint8_t) buffer;
+        state->cf.z = *destination_pointer == 0x00;
+        state->cf.s = (*destination_pointer & 0x80) == 0x80;
+        state->cf.p = is_even_parity(*destination_pointer);
+    }
+
 
     switch (opcode) {
         case 0x00: // nop

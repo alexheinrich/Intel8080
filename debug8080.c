@@ -10,13 +10,13 @@ void print_registers8080(const state8080 *state)
 {
     printf("--------------------\n");
     printf("Registers:\n");
-    printf("a: %u\n", state->a);
-    printf("b: %u\n", state->b);
-    printf("c: %u\n", state->c);
-    printf("d: %u\n", state->d);
-    printf("e: %u\n", state->e);
-    printf("h: %u\n", state->h);
-    printf("l: %u\n", state->l);
+    printf("a: 0x%02x\n", state->a);
+    printf("b: 0x%02x\n", state->b);
+    printf("c: 0x%02x\n", state->c);
+    printf("d: 0x%02x\n", state->d);
+    printf("e: 0x%02x\n", state->e);
+    printf("h: 0x%02x\n", state->h);
+    printf("l: 0x%02x\n", state->l);
 }
 
 void print_condition_flags8080(const state8080 *state)
