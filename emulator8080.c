@@ -77,6 +77,13 @@ bool emulate8080(state8080 *state)
         }
     }
 
+    // mvi (destination <- source)
+    if ((opcode & 0xc7) == 0x06) {
+        uint8_t destination = (opcode >> 3) & 0x07;
+        uint8_t *destination_pointer = lookup_register(destination, state);
+        *destination_pointer = state->memory[state->pc + 1];
+        opbytes = 2;
+    }
 
     // add (a <- a + source)
     if ((opcode & 0xf8) == 0x80) {
