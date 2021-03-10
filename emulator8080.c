@@ -37,7 +37,8 @@ uint8_t *lookup_register(uint8_t register_number, state8080 *state)
         case 6: 
             {
                 uint16_t address = (uint16_t) ((state->h << 8) + state->l);
-                printf("Mem: 0x%02x\n", state->memory[address]);
+                //printf("Mem: 0x%02x\n", state->memory[address]);
+                printf("Mem:\n");
                 return &state->memory[address];
             }
         case 7:
@@ -59,8 +60,8 @@ bool emulate8080(state8080 *state)
     unsigned char opcode = state->memory[state->pc];
     uint8_t opbytes = 1;
 
-    uint16_t buffer;
-    print_state_pre(state);
+    uint32_t buffer;
+    //print_state_pre(state);
 
     // mov (and hlt)
     if ((opcode & 0xc0) == 0x40) {
@@ -215,6 +216,51 @@ bool emulate8080(state8080 *state)
         state->cf.p = is_even_parity(result);
     }
 
+    // dad
+    if ((opcode & 0xcf) == 0x09) {
+        uint8_t source_num = (uint8_t) ((opcode & 0x30) >> 4);
+        uint8_t source_h, source_l;
+        switch(source_num) {
+            case 0x00:
+                source_h = state->b;
+                source_l = state->c;
+                break;
+            case 0x01:
+                source_h = state->d;
+                source_l = state->e;
+                break;
+            case 0x02:
+                source_h = state->h;
+                source_l = state->l;
+                break;
+            case 0x03:
+                source_h = (uint8_t) (state->sp >> 8);
+                source_l = (uint8_t) state->sp;
+                break;
+            default:
+                source_h = 0;
+                source_l = 0;
+                printf("Unkown source: dad\n");
+                break;
+        }
+
+        buffer = (uint32_t) ((state->h << 8) + state->l);
+        buffer += (uint32_t) ((source_h << 8) + source_l);
+        state->h = (uint8_t) (buffer >> 8);
+        state->l = (uint8_t) buffer;
+
+        //buffer = state->l + state->c;
+        //state->l = (uint8_t) buffer;
+        //buffer += state->h + state->b + (buffer >> 8);
+        //state->h = (uint8_t) buffer;
+
+        if (buffer > 0xffff) {
+            state->cf.cy = 1;
+        } else {
+            state->cf.cy = 0;
+        }
+    }
+
 
     switch (opcode) {
         case 0x00: // nop
@@ -238,8 +284,16 @@ bool emulate8080(state8080 *state)
         // case 0x05: dcr b
         // case 0x06: mvi b, d8
 
-        case 0x07:
-            // rlc
+        case 0x07: // rlc
+            buffer = state->a >> 7;
+            state->a = (uint8_t) ((uint8_t) (state->a << 1) + buffer);
+            state->cf.cy = buffer;
+            break;
+
+        // case 0x08: nop
+
+        case 0x09: // dad b
+            
             break;
 
         case 0x11: // lxi d
@@ -262,7 +316,7 @@ bool emulate8080(state8080 *state)
 
     state->pc = state->pc + opbytes;
 
-    print_state_post(state);
+    //print_state_post(state);
     return true;
 }
 
