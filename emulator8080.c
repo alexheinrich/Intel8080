@@ -37,8 +37,6 @@ uint8_t *lookup_register(uint8_t register_number, state8080 *state)
         case 6: 
             {
                 uint16_t address = (uint16_t) ((state->h << 8) + state->l);
-                //printf("Mem: 0x%02x\n", state->memory[address]);
-                printf("Mem:\n");
                 return &state->memory[address];
             }
         case 7:
@@ -50,9 +48,46 @@ uint8_t *lookup_register(uint8_t register_number, state8080 *state)
 
 }
 
+uint32_t lookup_register_pair_source(uint8_t source_num, state8080 *state)
+{
+    uint8_t source_h, source_l;
+    //assert(source_num < 0x04);
+
+    switch(source_num) {
+        case 0x00:
+            source_h = state->b;
+            source_l = state->c;
+            break;
+        case 0x01:
+            source_h = state->d;
+            source_l = state->e;
+            break;
+        case 0x02:
+            source_h = state->h;
+            source_l = state->l;
+            break;
+        case 0x03:
+            source_h = (uint8_t) (state->sp >> 8);
+            source_l = (uint8_t) state->sp;
+            break;
+        default:
+            fprintf(stderr, "Unkown source: %02x lookup_register_pair\n", source_num);
+            exit(1);
+    }
+
+    return (uint32_t) ((source_h << 8) + source_l);
+}
+
 uint16_t address_from_register_pair(uint8_t first_register, uint8_t second_register)
 {
     return (uint16_t) ((first_register << 8) + second_register);
+}
+
+void set_szp(state8080 *state, uint8_t result)
+{
+    state->cf.z = result == 0x00;
+    state->cf.s = (result & 0x80) == 0x80;
+    state->cf.p = is_even_parity(result);
 }
 
 bool emulate8080(state8080 *state)
@@ -61,7 +96,7 @@ bool emulate8080(state8080 *state)
     uint8_t opbytes = 1;
 
     uint32_t buffer;
-    //print_state_pre(state);
+    print_state_pre(state);
 
     // mov (and hlt)
     if ((opcode & 0xc0) == 0x40) {
@@ -70,18 +105,27 @@ bool emulate8080(state8080 *state)
         uint8_t destination = (opcode >> 3) & 0x07;
         uint8_t *destination_pointer = lookup_register(destination, state);
 
+        if (destination_pointer == NULL) {
+            return false;
+        }
+
         // hlt
         if (source == 0x06 && destination == 0x06) {
             return false;
-        } else {
-            *destination_pointer = source_value;
         }
+
+        *destination_pointer = source_value;
     }
 
     // mvi (destination <- source)
     if ((opcode & 0xc7) == 0x06) {
         uint8_t destination = (opcode >> 3) & 0x07;
         uint8_t *destination_pointer = lookup_register(destination, state);
+
+        if (destination_pointer == NULL) {
+            return false;
+        }
+
         *destination_pointer = state->memory[state->pc + 1];
         opbytes = 2;
     }
@@ -90,24 +134,28 @@ bool emulate8080(state8080 *state)
     if ((opcode & 0xc7) == 0x04) {
         uint8_t destination = opcode >> 3 & 0x07;
         uint8_t *destination_pointer = lookup_register(destination, state);
+        
+        if (destination_pointer == NULL) {
+            return false;
+        }
 
         buffer = *destination_pointer + 1;
         *destination_pointer = (uint8_t) buffer;
-        state->cf.z = *destination_pointer == 0x00;
-        state->cf.s = (*destination_pointer & 0x80) == 0x80;
-        state->cf.p = is_even_parity(*destination_pointer);
+        set_szp(state, *destination_pointer);
     }
     
     // dcr
     if ((opcode & 0xc7) == 0x05) {
         uint8_t destination = opcode >> 3 & 0x07;
         uint8_t *destination_pointer = lookup_register(destination, state);
+        
+        if (destination_pointer == NULL) {
+            return false;
+        }
 
         buffer = *destination_pointer - 1;
         *destination_pointer = (uint8_t) buffer;
-        state->cf.z = *destination_pointer == 0x00;
-        state->cf.s = (*destination_pointer & 0x80) == 0x80;
-        state->cf.p = is_even_parity(*destination_pointer);
+        set_szp(state, *destination_pointer);
     }
 
     // add (a <- a + source)
@@ -118,10 +166,9 @@ bool emulate8080(state8080 *state)
         buffer = (uint16_t) (state->a + source_value);
 
         state->a = (uint8_t) buffer;
-        state->cf.z = state->a == 0x00;
-        state->cf.s = (state->a & 0x80) == 0x80;
         state->cf.cy = buffer > 0xff;
-        state->cf.p = is_even_parity(state->a);
+
+        set_szp(state, state->a);
     }
 
     // adc (a <- a + source + cy)
@@ -132,10 +179,9 @@ bool emulate8080(state8080 *state)
         buffer = (uint16_t) (state->a + source_value + state->cf.cy);
 
         state->a = (uint8_t) buffer;
-        state->cf.z = state->a == 0x00;
-        state->cf.s = (state->a & 0x80) == 0x80;
         state->cf.cy = buffer > 0xff;
-        state->cf.p = is_even_parity(state->a);
+
+        set_szp(state, state->a);
     }
 
     // sub (a <- a - source)
@@ -146,10 +192,9 @@ bool emulate8080(state8080 *state)
         buffer = state->a + (uint8_t) ~source_value + 0x01;
 
         state->a = (uint8_t) buffer;
-        state->cf.z = state->a == 0x00;
-        state->cf.s = (state->a & 0x80) == 0x80;
         state->cf.cy = !(buffer > 0xff);
-        state->cf.p = is_even_parity(state->a);
+
+        set_szp(state, state->a);
     }
     
     // sbb (a <- a - source)
@@ -160,10 +205,9 @@ bool emulate8080(state8080 *state)
         buffer = state->a + (uint8_t) ~(source_value + state->cf.cy) + 0x01;
 
         state->a = (uint8_t) buffer;
-        state->cf.z = state->a == 0x00;
-        state->cf.s = (state->a & 0x80) == 0x80;
         state->cf.cy = !(buffer > 0xff);
-        state->cf.p = is_even_parity(state->a);
+
+        set_szp(state, state->a);
     }
 
     // ana (a <- a & source)
@@ -172,10 +216,9 @@ bool emulate8080(state8080 *state)
         uint8_t source_value = *lookup_register(source, state);
 
         state->a = (uint8_t) (state->a & source_value);
-        state->cf.z = state->a == 0x00;
-        state->cf.s = (state->a & 0x80) == 0x80;
         state->cf.cy = false;
-        state->cf.p = is_even_parity(state->a);
+
+        set_szp(state, state->a);
     }
 
     // xra (a <- a ^ source)
@@ -184,10 +227,9 @@ bool emulate8080(state8080 *state)
         uint8_t source_value = *lookup_register(source, state);
 
         state->a = (uint8_t) (state->a ^ source_value);
-        state->cf.z = state->a == 0x00;
-        state->cf.s = (state->a & 0x80) == 0x80;
         state->cf.cy = false;
-        state->cf.p = is_even_parity(state->a);
+
+        set_szp(state, state->a);
     }
 
     // ora (a <- a | source)
@@ -196,10 +238,9 @@ bool emulate8080(state8080 *state)
         uint8_t source_value = *lookup_register(source, state);
 
         state->a = (uint8_t) (state->a | source_value);
-        state->cf.z = state->a == 0x00;
-        state->cf.s = (state->a & 0x80) == 0x80;
         state->cf.cy = false;
-        state->cf.p = is_even_parity(state->a);
+
+        set_szp(state, state->a);
     }
 
     // cmp (a < source)
@@ -210,55 +251,21 @@ bool emulate8080(state8080 *state)
         buffer = state->a + (uint8_t) ~source_value + 0x01;
 
         uint8_t result = (uint8_t) buffer;
-        state->cf.z = result == 0x00;
-        state->cf.s = (result & 0x80) == 0x80; 
         state->cf.cy = !(buffer > 0xff);
-        state->cf.p = is_even_parity(result);
+
+        set_szp(state, result);
     }
 
     // dad
     if ((opcode & 0xcf) == 0x09) {
         uint8_t source_num = (uint8_t) ((opcode & 0x30) >> 4);
-        uint8_t source_h, source_l;
-        switch(source_num) {
-            case 0x00:
-                source_h = state->b;
-                source_l = state->c;
-                break;
-            case 0x01:
-                source_h = state->d;
-                source_l = state->e;
-                break;
-            case 0x02:
-                source_h = state->h;
-                source_l = state->l;
-                break;
-            case 0x03:
-                source_h = (uint8_t) (state->sp >> 8);
-                source_l = (uint8_t) state->sp;
-                break;
-            default:
-                source_h = 0;
-                source_l = 0;
-                printf("Unkown source: dad\n");
-                break;
-        }
+        uint32_t source = lookup_register_pair_source(source_num, state);
 
-        buffer = (uint32_t) ((state->h << 8) + state->l);
-        buffer += (uint32_t) ((source_h << 8) + source_l);
+        buffer = (uint32_t) ((state->h << 8) + state->l) + source;
         state->h = (uint8_t) (buffer >> 8);
         state->l = (uint8_t) buffer;
 
-        //buffer = state->l + state->c;
-        //state->l = (uint8_t) buffer;
-        //buffer += state->h + state->b + (buffer >> 8);
-        //state->h = (uint8_t) buffer;
-
-        if (buffer > 0xffff) {
-            state->cf.cy = 1;
-        } else {
-            state->cf.cy = 0;
-        }
+        state->cf.cy = buffer > 0xffff;
     }
 
 
@@ -316,7 +323,7 @@ bool emulate8080(state8080 *state)
 
     state->pc = state->pc + opbytes;
 
-    //print_state_post(state);
+    print_state_post(state);
     return true;
 }
 
@@ -356,11 +363,13 @@ int32_t main(int32_t argc, char *argv[])
         exit(1);
     }
 
-    uint8_t *buffer = malloc(fsize);
+    // 64KiB
+    uint8_t *buffer = malloc(0x10000);
     if (buffer == NULL) {
         printf("malloc() failed. Errno: %s.\n", strerror(errno));
-        exit_and_free(buffer);
+        exit(1);
     }
+    memset(buffer, 0, 0x10000);
 
     if (fread(buffer, sizeof(uint8_t), fsize, f) != fsize) {
         printf("fread() failed. Errno: %s.\n", strerror(errno));
@@ -401,8 +410,6 @@ int32_t main(int32_t argc, char *argv[])
         }
     }
 
-
-    // disassemble
     if (fclose(f) != 0) {
         printf("fclose() failed. Errno: %s.\n", strerror(errno));
         exit_and_free(buffer);
