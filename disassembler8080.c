@@ -21,7 +21,7 @@ void interpret210(char *opcode_name, uint8_t opcode)
 size_t disassemble_op8080(unsigned char *buffer, size_t pc)
 {
     size_t opbytes = 1;
-    printf("%02x ", buffer[pc]);
+    printf("%04zx %02x ", pc, buffer[pc]);
 
     // mov (and hlt)
     if ((buffer[pc] & 0xc0) == 0x40) {
