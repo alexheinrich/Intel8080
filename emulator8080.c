@@ -67,8 +67,8 @@ uint32_t lookup_register_pair_source(uint8_t source_num, state8080 *state)
             source_l = state->l;
             break;
         case 0x03:
-            source_h = (uint8_t) (state->sp >> 8);
-            source_l = (uint8_t) state->sp;
+            source_h = (uint8_t) state->sp;
+            source_l = (uint8_t) (state->sp >> 8);
             break;
         default:
             fprintf(stderr, "Unkown source: %02x lookup_register_pair\n", source_num);
@@ -78,9 +78,28 @@ uint32_t lookup_register_pair_source(uint8_t source_num, state8080 *state)
     return (uint32_t) ((source_h << 8) + source_l);
 }
 
-uint16_t address_from_register_pair(uint8_t first_register, uint8_t second_register)
+void op_on_register_pair(uint8_t src_num, state8080 *state, uint16_t (*op)(uint16_t))
 {
-    return (uint16_t) ((first_register << 8) + second_register);
+    switch(src_num) {
+        case 0x00:
+            state->b = (uint8_t) op(state->b);
+            state->c = (uint8_t) op(state->c);
+            break;
+        case 0x01:
+            state->d = (uint8_t) op(state->d);
+            state->e = (uint8_t) op(state->e);
+            break;
+        case 0x02:
+            state->h = (uint8_t) op(state->h);
+            state->l = (uint8_t) op(state->l);
+            break;
+        case 0x03:
+            state->sp = op(state->sp);
+            break;
+        default:
+            fprintf(stderr, "Unkown source: %02x lookup_register_pair\n", src_num);
+            exit(1);
+    }
 }
 
 void set_szp(state8080 *state, uint8_t result)
@@ -88,6 +107,16 @@ void set_szp(state8080 *state, uint8_t result)
     state->cf.z = result == 0x00;
     state->cf.s = (result & 0x80) == 0x80;
     state->cf.p = is_even_parity(result);
+}
+
+uint16_t dcr(uint16_t src)
+{
+    return (uint16_t) (src - 1);
+}
+
+uint16_t incr(uint16_t src)
+{
+    return src + 1;
 }
 
 bool emulate8080(state8080 *state)
@@ -267,6 +296,18 @@ bool emulate8080(state8080 *state)
 
         state->cf.cy = buffer > 0xffff;
     }
+    
+    // inx
+    if ((opcode & 0xcf) == 0x03) {
+        uint8_t reg_num = (uint8_t) ((opcode & 0x30) >> 4);
+        op_on_register_pair(reg_num, state, incr);
+    }
+
+    // dcx
+    if ((opcode & 0xcf) == 0x0b) {
+        uint8_t reg_num = (uint8_t) ((opcode & 0x30) >> 4);
+        op_on_register_pair(reg_num, state, dcr);
+    }
 
 
     switch (opcode) {
@@ -279,42 +320,109 @@ bool emulate8080(state8080 *state)
             break;
         case 0x02: // stax b
             {
-                uint16_t address = address_from_register_pair(state->b, state->c);
-                state->memory[address] = state->a;
+                uint16_t addr = (uint16_t) ((state->b << 8) + state->c);
+                state->memory[addr] = state->a;
+                printf("stax b: %02x\n", state->memory[addr]);
+                break;
             }
-        case 0x03: // inx b
-            state->b = (uint8_t) (state->b + 1);
-            state->c = (uint8_t) (state->c + 1);
-            break;
-
+        // case 0x03: inx b
         // case 0x04: inr b
         // case 0x05: dcr b
         // case 0x06: mvi b, d8
-
         case 0x07: // rlc
             buffer = state->a >> 7;
             state->a = (uint8_t) ((uint8_t) (state->a << 1) + buffer);
             state->cf.cy = buffer;
             break;
-
         // case 0x08: nop
-
-        case 0x09: // dad b
-            
+        // case 0x09: dad b
+        case 0x0a: // ldax b
+            {
+                uint16_t addr = (uint16_t) ((state->b << 8) + state->c);
+                state->a = state->memory[addr];
+                break;
+            }
+        // case 0x0b: dcx b
+        // case 0x0c: inr c
+        // case 0x0d: dcr c
+        // case 0x0e: mvi c, d8
+        case 0x0f: // rlc
+            // TODO
             break;
-
+        // case 0x10: nop
         case 0x11: // lxi d
             state->d = state->memory[state->pc + 2];
             state->e = state->memory[state->pc + 1];
             opbytes = 3;
             break;
+        case 0x12: // stax d
+            {
+                uint16_t addr = (uint16_t) ((state->d << 8) + state->e);
+                state->memory[addr] = state->a;
+                printf("stax d: %02x\n", state->memory[addr]);
+                break;
+            }
+        // case 0x13: inx d
+        // case 0x14: inr d
+        // case 0x15: dcr d
+        // case 0x16: mvi d, d8
+        case 0x17: // ral
+            // TODO
+            break;
+        // case 0x18: nop
+        // case 0x19: dad d
+        case 0x1a: // ldax d
+            {
+                uint16_t addr = (uint16_t) ((state->d << 8) + state->e);
+                state->a = state->memory[addr];
+                break;
+            }
+        // case 0x1b: dcx d
+        // case 0x1c: inr e
+        // case 0x1d: dcr e
+        // case 0x1e: mvi e, d8
 
         case 0x21: // lxi h
             state->h = state->memory[state->pc + 2];
             state->l = state->memory[state->pc + 1];
             opbytes = 3;
             break;
+        
+        // case 0x23: inx h
+        // case 0x24: inr h
+        // case 0x25: dcr h
+        // case 0x26: mvi h, d8
 
+        // case 0x28: nop
+        // case 0x29: dad h
+            
+        // case 0x2b: dcx h
+        // case 0x2c: inr l
+        // case 0x2d: dcr l
+        // case 0x2e: mvi l, d8
+
+        // case 0x3b: dcx sp
+
+        // case 0x33: inx sp
+        // case 0x34: inr m
+        // case 0x35: dcr m
+        // case 0x36: mvi m, d8
+
+        // case 0x39: dad sp
+            
+        // case 0x3c: inr a
+        // case 0x3d: dcr a
+        // case 0x3e: mvi a, d8
+
+        // 0x40 - 0x7f mov
+        // 0x80 - 0x87 add
+        // 0x88 - 0x8f adc
+        // 0x90 - 0x97 sub
+        // 0x98 - 0x9f sbb
+        // 0xa0 - 0xa7 ana
+        // 0xa8 - 0xaf xra
+        // 0xb0 - 0xb7 ora
+        // 0xb8 - 0xbf cmp
 
         default:
             //unimplemented_instruction(state);
