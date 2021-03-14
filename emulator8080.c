@@ -445,7 +445,9 @@ bool emulate8080(state8080 *state)
         // case 0x34: inr m
         // case 0x35: dcr m
         // case 0x36: mvi m, d8
-
+        case 0x37: // stc
+            state->cf.cy = 1;
+            break;
         // case 0x38: nop
         // case 0x39: dad sp
         // case 0x3a: lda adr
@@ -453,7 +455,9 @@ bool emulate8080(state8080 *state)
         // case 0x3c: inr a
         // case 0x3d: dcr a
         // case 0x3e: mvi a, d8
-
+        case 0x3f: // cmc
+            state->cf.cy = !state->cf.cy;
+            break;
         // 0x40 - 0x7f mov
         // 0x80 - 0x87 add
         // 0x88 - 0x8f adc
