@@ -309,6 +309,36 @@ bool emulate8080(state8080 *state)
         op_on_register_pair(reg_num, state, dcr);
     }
 
+    // sta/lda/shld/lhld
+    if ((opcode & 0xe7) == 0x22) {
+        uint8_t op_n = (opcode >> 3) & 0x03;
+        uint8_t addr_h = state->memory[state->pc + 2];
+        uint8_t addr_l = state->memory[state->pc + 1];
+        uint16_t addr = (uint16_t)((addr_h << 8) + addr_l);
+
+        switch (op_n) {
+            case 0x00: // shld
+                state->memory[addr] = state->h;
+                state->memory[addr + 1] = state->l;
+                break;
+            case 0x01: // lhld
+                state->h = state->memory[addr];
+                state->l = state->memory[addr + 1];
+                break;
+            case 0x02: // sta
+                state->memory[addr] = state->a;
+                break;
+            case 0x03: // lda
+                state->a = state->memory[addr];
+                break;
+            default:
+                fprintf(stderr, "Invalid op_n: %02x sta/lda/shld/lhld\n", op_n);
+                exit(1);
+        }
+
+        opbytes = 3;
+    }
+
 
     switch (opcode) {
         case 0x00: // nop
@@ -346,8 +376,10 @@ bool emulate8080(state8080 *state)
         // case 0x0c: inr c
         // case 0x0d: dcr c
         // case 0x0e: mvi c, d8
-        case 0x0f: // rlc
-            // TODO
+        case 0x0f: // rrc
+            buffer = (uint8_t) (state->a << 7);
+            state->a = (uint8_t) ((state->a >> 1) + buffer);
+            state->cf.cy = buffer;
             break;
         // case 0x10: nop
         case 0x11: // lxi d
@@ -367,7 +399,9 @@ bool emulate8080(state8080 *state)
         // case 0x15: dcr d
         // case 0x16: mvi d, d8
         case 0x17: // ral
-            // TODO
+            buffer = state->a >> 7;
+            state->a = (uint8_t) ((uint8_t) (state->a << 1) + state->cf.cy);
+            state->cf.cy = buffer;
             break;
         // case 0x18: nop
         // case 0x19: dad d
@@ -381,13 +415,18 @@ bool emulate8080(state8080 *state)
         // case 0x1c: inr e
         // case 0x1d: dcr e
         // case 0x1e: mvi e, d8
-
+        case 0x1f: // rar
+            buffer = (uint8_t) (state->a << 7);
+            state->a = (uint8_t) ((state->a >> 1) + state->cf.cy);
+            state->cf.cy = buffer;
+            break;
+        // case 0x20: nop
         case 0x21: // lxi h
             state->h = state->memory[state->pc + 2];
             state->l = state->memory[state->pc + 1];
             opbytes = 3;
             break;
-        
+        // case 0x22: shld adr
         // case 0x23: inx h
         // case 0x24: inr h
         // case 0x25: dcr h
@@ -395,21 +434,22 @@ bool emulate8080(state8080 *state)
 
         // case 0x28: nop
         // case 0x29: dad h
-            
+        // case 0x2a: lhld adr    
         // case 0x2b: dcx h
         // case 0x2c: inr l
         // case 0x2d: dcr l
         // case 0x2e: mvi l, d8
 
-        // case 0x3b: dcx sp
-
+        // case 0x32: sta adr
         // case 0x33: inx sp
         // case 0x34: inr m
         // case 0x35: dcr m
         // case 0x36: mvi m, d8
 
+        // case 0x38: nop
         // case 0x39: dad sp
-            
+        // case 0x3a: lda adr
+        // case 0x3b: dcx sp
         // case 0x3c: inr a
         // case 0x3d: dcr a
         // case 0x3e: mvi a, d8
