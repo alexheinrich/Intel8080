@@ -17,6 +17,7 @@ void print_registers8080(const state8080 *state)
     printf("e: 0x%02x\n", state->e);
     printf("h: 0x%02x\n", state->h);
     printf("l: 0x%02x\n", state->l);
+    printf("sp: 0x%04x\n", state->sp);
 }
 
 void print_condition_flags8080(const state8080 *state)
