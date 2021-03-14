@@ -102,6 +102,31 @@ void op_on_register_pair(uint8_t src_num, state8080 *state, uint16_t (*op)(uint1
     }
 }
 
+void get_rg_pr(uint8_t src_n, state8080 *state, uint8_t *h, uint8_t *l)
+{
+    switch(src_n) {
+        case 0x00:
+            h = &state->b;
+            l = &state->c;
+            break;
+        case 0x01:
+            h = &state->d;
+            l = &state->e;
+            break;
+        case 0x02:
+            h = &state->h;
+            l = &state->l;
+            break;
+        case 0x03:
+            h = (uint8_t *) &state->sp;
+            l = NULL;
+            break;
+        default:
+            fprintf(stderr, "Unkown source: %02x get_rg_pr\n", src_n);
+            exit(1);
+    }
+}
+
 void set_szp(state8080 *state, uint8_t result)
 {
     state->cf.z = result == 0x00;
@@ -296,6 +321,15 @@ bool emulate8080(state8080 *state)
 
         state->cf.cy = buffer > 0xffff;
     }
+
+    // lxi
+    if ((opcode & 0xcf) == 0x01) {
+        uint8_t *h = NULL; 
+        uint8_t *l = NULL;
+        get_rg_pr(0x00, state, h, l);
+        printf("lxi\n");
+        // TODO
+    }
     
     // inx
     if ((opcode & 0xcf) == 0x03) {
@@ -431,7 +465,24 @@ bool emulate8080(state8080 *state)
         // case 0x24: inr h
         // case 0x25: dcr h
         // case 0x26: mvi h, d8
+        case 0x27: // daa
+            {
+                uint8_t b_l = (uint8_t) state->a & 0x0f;
+                uint8_t b_h = (uint8_t) ((state->a & 0xf0) >> 4);
 
+                if (state->cf.ac || b_l > 0x09) {
+                    b_l += 0x06;
+                    state->cf.ac = b_l > 0x0f;
+                }
+
+                if (state->cf.cy || b_h > 0x09) {
+                    b_h += 0x06;
+                    state->cf.cy = b_h > 0x0f;
+                }
+
+                state->a = (uint8_t) ((b_h << 4) + b_l);
+            }
+            break;
         // case 0x28: nop
         // case 0x29: dad h
         // case 0x2a: lhld adr    
@@ -439,6 +490,10 @@ bool emulate8080(state8080 *state)
         // case 0x2c: inr l
         // case 0x2d: dcr l
         // case 0x2e: mvi l, d8
+        case 0x2f: // cma
+            state->a = ~state->a;
+            break;
+        // case 0x30: nop
 
         // case 0x32: sta adr
         // case 0x33: inx sp
