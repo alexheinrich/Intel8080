@@ -102,24 +102,24 @@ void op_on_register_pair(uint8_t src_num, state8080 *state, uint16_t (*op)(uint1
     }
 }
 
-void get_rg_pr(uint8_t src_n, state8080 *state, uint8_t *h, uint8_t *l)
+void get_rg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
 {
     switch(src_n) {
         case 0x00:
-            h = &state->b;
-            l = &state->c;
+            *hi = &state->b;
+            *lo = &state->c;
             break;
         case 0x01:
-            h = &state->d;
-            l = &state->e;
+            *hi = &state->d;
+            *lo = &state->e;
             break;
         case 0x02:
-            h = &state->h;
-            l = &state->l;
+            *hi = &state->h;
+            *lo = &state->l;
             break;
         case 0x03:
-            h = (uint8_t *) &state->sp;
-            l = NULL;
+            *hi = (uint8_t *) &state->sp;
+            *lo = NULL;
             break;
         default:
             fprintf(stderr, "Unkown source: %02x get_rg_pr\n", src_n);
@@ -324,11 +324,11 @@ bool emulate8080(state8080 *state)
 
     // lxi
     if ((opcode & 0xcf) == 0x01) {
-        uint8_t *h = NULL; 
-        uint8_t *l = NULL;
-        get_rg_pr(0x00, state, h, l);
+        uint8_t *hi, *lo; 
+        get_rg_pr(0x00, state, &hi, &lo);
+        *hi = state->memory[state->pc + 2];
+        *lo = state->memory[state->pc + 1];
         printf("lxi\n");
-        // TODO
     }
     
     // inx
@@ -481,6 +481,7 @@ bool emulate8080(state8080 *state)
                 }
 
                 state->a = (uint8_t) ((b_h << 4) + b_l);
+                set_szp(state, state->a);
             }
             break;
         // case 0x28: nop
@@ -522,6 +523,9 @@ bool emulate8080(state8080 *state)
         // 0xa8 - 0xaf xra
         // 0xb0 - 0xb7 ora
         // 0xb8 - 0xbf cmp
+        case 0xc0: // rnz
+
+            break;
 
         default:
             //unimplemented_instruction(state);
