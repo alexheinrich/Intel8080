@@ -421,7 +421,7 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
             opbytes = 3;
             break;
         case 0xf5:
-            printf("pop  psw");
+            printf("push  psw");
             break;
         case 0xf6:
             printf("ori  %02x", buffer[pc+1]);

@@ -1,8 +1,12 @@
 rom/
+.cache/
 *.swp
+*.swo
+*.swn
 *.o
 *.dSYM
 .DS_STORE
 disassembler8080
 emulator8080
+compile_commands.json
 

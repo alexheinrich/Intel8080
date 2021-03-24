@@ -35,8 +35,8 @@ void print_state_pre(const state8080 *state)
 {
     printf("====================\n");
     printf("Operation:\n");
-    printf("PC: %zu\n", state->pc);
-    disassemble_op8080(state->memory, state->pc);
+    printf("PC: %hu\n", state->pc);
+    disassemble_op8080(state->memory, (size_t) state->pc);
 
     print_registers8080(state);
 
