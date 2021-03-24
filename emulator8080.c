@@ -48,61 +48,8 @@ uint8_t *lookup_register(uint8_t register_number, state8080 *state)
 
 }
 
-uint32_t lookup_register_pair_source(uint8_t source_num, state8080 *state)
-{
-    uint8_t source_h, source_l;
-    //assert(source_num < 0x04);
 
-    switch(source_num) {
-        case 0x00:
-            source_h = state->b;
-            source_l = state->c;
-            break;
-        case 0x01:
-            source_h = state->d;
-            source_l = state->e;
-            break;
-        case 0x02:
-            source_h = state->h;
-            source_l = state->l;
-            break;
-        case 0x03:
-            source_h = (uint8_t) state->sp;
-            source_l = (uint8_t) (state->sp >> 8);
-            break;
-        default:
-            fprintf(stderr, "Unkown source: %02x lookup_register_pair\n", source_num);
-            exit(1);
-    }
-
-    return (uint32_t) ((source_h << 8) + source_l);
-}
-
-void op_on_register_pair(uint8_t src_num, state8080 *state, uint16_t (*op)(uint16_t))
-{
-    switch(src_num) {
-        case 0x00:
-            state->b = (uint8_t) op(state->b);
-            state->c = (uint8_t) op(state->c);
-            break;
-        case 0x01:
-            state->d = (uint8_t) op(state->d);
-            state->e = (uint8_t) op(state->e);
-            break;
-        case 0x02:
-            state->h = (uint8_t) op(state->h);
-            state->l = (uint8_t) op(state->l);
-            break;
-        case 0x03:
-            state->sp = op(state->sp);
-            break;
-        default:
-            fprintf(stderr, "Unkown source: %02x lookup_register_pair\n", src_num);
-            exit(1);
-    }
-}
-
-void get_rg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
+void lookup_register_pair(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
 {
     switch(src_n) {
         case 0x00:
@@ -118,30 +65,21 @@ void get_rg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
             *lo = &state->l;
             break;
         case 0x03:
-            *hi = (uint8_t *) &state->sp;
-            *lo = NULL;
+            *lo = (uint8_t *) &state->sp;
+            *hi = *lo + 1;
             break;
+
         default:
-            fprintf(stderr, "Unkown source: %02x get_rg_pr\n", src_n);
+            fprintf(stderr, "Unkown source: %02x lookup_register_pair\n", src_n);
             exit(1);
     }
 }
 
 void set_szp(state8080 *state, uint8_t result)
 {
-    state->cf.z = result == 0x00;
     state->cf.s = (result & 0x80) == 0x80;
+    state->cf.z = result == 0x00;
     state->cf.p = is_even_parity(result);
-}
-
-uint16_t dcr(uint16_t src)
-{
-    return (uint16_t) (src - 1);
-}
-
-uint16_t incr(uint16_t src)
-{
-    return src + 1;
 }
 
 bool emulate8080(state8080 *state)
@@ -312,10 +250,14 @@ bool emulate8080(state8080 *state)
 
     // dad
     if ((opcode & 0xcf) == 0x09) {
-        uint8_t source_num = (uint8_t) ((opcode & 0x30) >> 4);
-        uint32_t source = lookup_register_pair_source(source_num, state);
+        uint8_t *hi, *lo;
+        uint8_t src_num = (uint8_t) ((opcode & 0x30) >> 4);
 
-        buffer = (uint32_t) ((state->h << 8) + state->l) + source;
+        lookup_register_pair(src_num, state, &hi, &lo);
+
+        uint32_t src = (uint32_t) ((*hi << 8) + *lo);
+
+        buffer = (uint32_t) ((state->h << 8) + state->l) + src;
         state->h = (uint8_t) (buffer >> 8);
         state->l = (uint8_t) buffer;
 
@@ -325,30 +267,46 @@ bool emulate8080(state8080 *state)
     // lxi
     if ((opcode & 0xcf) == 0x01) {
         uint8_t *hi, *lo; 
-        get_rg_pr(0x00, state, &hi, &lo);
+        uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
+
+        lookup_register_pair(src, state, &hi, &lo);
+
         *hi = state->memory[state->pc + 2];
         *lo = state->memory[state->pc + 1];
+        opbytes = 3;
         printf("lxi\n");
     }
     
     // inx
     if ((opcode & 0xcf) == 0x03) {
-        uint8_t reg_num = (uint8_t) ((opcode & 0x30) >> 4);
-        op_on_register_pair(reg_num, state, incr);
+        uint8_t *hi, *lo; 
+        uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
+
+        lookup_register_pair(src, state, &hi, &lo);
+        
+        uint16_t buf = *lo + 1;
+        *lo = (uint8_t) buf;
+        *hi = (uint8_t) (*hi + (buf >> 8));
     }
 
     // dcx
     if ((opcode & 0xcf) == 0x0b) {
-        uint8_t reg_num = (uint8_t) ((opcode & 0x30) >> 4);
-        op_on_register_pair(reg_num, state, dcr);
+        uint8_t *hi, *lo; 
+        uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
+
+        lookup_register_pair(src, state, &hi, &lo);
+
+        uint16_t buf = *lo - 1;
+        *lo = (uint8_t) buf;
+        *hi = (uint8_t) (*hi + (buf >> 8));
     }
 
     // sta/lda/shld/lhld
     if ((opcode & 0xe7) == 0x22) {
         uint8_t op_n = (opcode >> 3) & 0x03;
-        uint8_t addr_h = state->memory[state->pc + 2];
-        uint8_t addr_l = state->memory[state->pc + 1];
-        uint16_t addr = (uint16_t)((addr_h << 8) + addr_l);
+        uint8_t hi = state->memory[state->pc + 2];
+        uint8_t lo = state->memory[state->pc + 1];
+        uint16_t addr = (uint16_t) ((hi << 8) + lo);
 
         switch (op_n) {
             case 0x00: // shld
@@ -373,6 +331,45 @@ bool emulate8080(state8080 *state)
         opbytes = 3;
     }
 
+    // rnz/rz/rnc/rc/rpo/rpe/rp/rm
+    if ((opcode & 0xc7) == 0xc0) {
+        uint8_t n = (opcode >> 3) & 0x03;
+        bool jump = false;
+        switch (n) {
+            case 0x00: // rnz
+                if (!state->cf.z) jump = true;
+                break;
+            case 0x01: // rz
+                if (state->cf.z) jump = true;
+                break;
+            case 0x02: // rnc
+                if (!state->cf.cy) jump = true;
+                break;
+            case 0x03: // rc
+                if (state->cf.cy) jump = true;
+                break;
+            case 0x04: // rpo
+                if (!state->cf.p) jump = true;
+                break;
+            case 0x05: // rpe
+                if (state->cf.p) jump = true;
+                break;
+            case 0x06: // rp
+                if (!state->cf.s) jump = true;
+                break;
+            case 0x07: // rm
+                if (state->cf.s) jump = true;
+                break;
+            default:
+                break;
+        }
+
+        if (jump) {
+            state->pc = (uint16_t) (state->memory[state->sp + 1] << 8) + state->memory[state->sp];
+            state->sp += 2;
+        }
+
+    }
 
     switch (opcode) {
         case 0x00: // nop
@@ -495,7 +492,7 @@ bool emulate8080(state8080 *state)
             state->a = ~state->a;
             break;
         // case 0x30: nop
-
+        // case 0x31: lxi sp
         // case 0x32: sta adr
         // case 0x33: inx sp
         // case 0x34: inr m
@@ -523,9 +520,25 @@ bool emulate8080(state8080 *state)
         // 0xa8 - 0xaf xra
         // 0xb0 - 0xb7 ora
         // 0xb8 - 0xbf cmp
-        case 0xc0: // rnz
+        // case 0xc0: rnz
 
+        // case 0xc8: rz
+        case 0xc9: // ret
+            state->pc = (uint16_t) (state->memory[state->sp + 1] << 8) + state->memory[state->sp];
+            state->sp += 2;
             break;
+
+        // case 0xd0: rnc
+
+        // case 0xd8: rc 
+
+        // case 0xe0: rpo
+
+        // case 0xe8: rpe
+
+        // case 0xf0: rp
+
+        // case 0xf8: rm
 
         default:
             //unimplemented_instruction(state);
@@ -609,9 +622,10 @@ int32_t main(int32_t argc, char *argv[])
     };
     
     if (argc > 2 && strcmp(argv[2], "-d") == 0) {
+        size_t bc = 0;
         // Disassemble 
-        while (state.pc < fsize) {
-            state.pc += disassemble_op8080(state.memory, state.pc);
+        while (bc < fsize) {
+            bc += disassemble_op8080(state.memory, bc);
         }
     } else {
         // Emulate

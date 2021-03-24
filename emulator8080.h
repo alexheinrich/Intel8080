@@ -20,7 +20,7 @@ typedef struct {
     uint8_t e;
     uint8_t h;
     uint8_t l;
-    size_t pc;
+    uint16_t pc;
     uint16_t sp;
     uint8_t *memory;
     condition_flags cf;
