@@ -393,6 +393,45 @@ bool emulate8080(state8080 *state)
             state->sp += 2;
         }
     }
+    
+    // jnz/jz/jnc/jc/jpo/jpe/jp/jm
+    if ((opcode & 0xc7) == 0xc2) {
+        uint8_t n = (opcode >> 3) & 0x03;
+        bool jump = false;
+        switch (n) {
+            case 0x00: // jnz
+                if (!state->cf.z) jump = true;
+                break;
+            case 0x01: // jz
+                if (state->cf.z) jump = true;
+                break;
+            case 0x02: // jnc
+                if (!state->cf.cy) jump = true;
+                break;
+            case 0x03: // jc
+                if (state->cf.cy) jump = true;
+                break;
+            case 0x04: // jpo
+                if (!state->cf.p) jump = true;
+                break;
+            case 0x05: // jpe
+                if (state->cf.p) jump = true;
+                break;
+            case 0x06: // jp
+                if (!state->cf.s) jump = true;
+                break;
+            case 0x07: // jm
+                if (state->cf.s) jump = true;
+                break;
+            default:
+                break;
+        }
+
+        if (jump) {
+            state->pc = (uint16_t) ((state->memory[state->pc + 2] << 8) + state->memory[state->pc + 1]);
+            opbytes = 3;
+        }
+    }
 
     // pop
     if ((opcode & 0xcf) == 0xc1) {
@@ -572,35 +611,51 @@ bool emulate8080(state8080 *state)
         // 0xb8 - 0xbf cmp
         // case 0xc0: rnz
         // case 0xc1: pop b
+        // case 0xc2: jnz
+        case 0xc3: // jmp
+            state->pc = (uint16_t) ((state->memory[state->pc + 2] << 8) + state->memory[state->pc + 1]);
+            opbytes = 3;
+            break;
 
         // case 0xc5: push b
 
         // case 0xc8: rz
         case 0xc9: // ret
-            state->pc = (uint16_t) (state->memory[state->sp + 1] << 8) + state->memory[state->sp];
+            state->pc = (uint16_t) ((state->memory[state->sp + 1] << 8) + state->memory[state->sp]);
             state->sp += 2;
             break;
+        // case 0xca: jz
+        // case 0xcb: nop
 
         // case 0xd0: rnc
         // case 0xd1: pop d
+        // case 0xd2: jnc
 
         // case 0xd5: push d
 
         // case 0xd8: rc 
+        // case 0xd9: nop
+        // case 0xda: jc
 
         // case 0xe0: rpo
         // case 0xe1: pop h
+        // case 0xe2: jpo
 
         // case 0xe5: push h
 
         // case 0xe8: rpe
 
+        // case 0xea: jpe
+
         // case 0xf0: rp
         // case 0xf1: pop psw
+        // case 0xf2: jpe
 
         // case 0xf5: push psw
 
         // case 0xf8: rm
+
+        // case 0xfa: jm
 
     
         default:
