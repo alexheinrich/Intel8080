@@ -99,6 +99,49 @@ void lu_rg_pr_psw(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
             exit(1);
     }
 }
+
+void jmp(state8080 *state)
+{
+    state->pc = (uint16_t) ((state->memory[state->pc + 2] << 8) + state->memory[state->pc + 1]);
+}
+
+void pop_sp(state8080 *state)
+{
+    state->pc = (uint16_t) (state->memory[state->sp + 1] << 8) + state->memory[state->sp];
+    state->sp += 2;
+}
+
+void push_sp(state8080 *state)
+{
+    state->memory[state->sp - 1] = (uint8_t) (state->pc >> 8);
+    state->memory[state->sp - 2] = (uint8_t) state->pc;
+    state->sp -= 2;
+}
+
+bool is_cf_cond(uint8_t con, state8080 *state)
+{
+    switch (con) {
+        case 0x00: // ?nz
+            if (!state->cf.z) return true;
+        case 0x01: // ?z
+            if (state->cf.z) return true;
+        case 0x02: // ?nc
+            if (!state->cf.cy) return true;
+        case 0x03: // ?c
+            if (state->cf.cy) return true;
+        case 0x04: // ?po
+            if (!state->cf.p) return true;
+        case 0x05: // ?pe
+            if (state->cf.p) return true;
+        case 0x06: // ?p
+            if (!state->cf.s) return true;
+        case 0x07: // ?m
+            if (state->cf.s) return true;
+        default:
+            return false;
+    }
+}
+
 void set_szp(state8080 *state, uint8_t result)
 {
     state->cf.s = (result & 0x80) == 0x80;
@@ -358,79 +401,30 @@ bool emulate8080(state8080 *state)
     // rnz/rz/rnc/rc/rpo/rpe/rp/rm
     if ((opcode & 0xc7) == 0xc0) {
         uint8_t n = (opcode >> 3) & 0x03;
-        bool jump = false;
-        switch (n) {
-            case 0x00: // rnz
-                if (!state->cf.z) jump = true;
-                break;
-            case 0x01: // rz
-                if (state->cf.z) jump = true;
-                break;
-            case 0x02: // rnc
-                if (!state->cf.cy) jump = true;
-                break;
-            case 0x03: // rc
-                if (state->cf.cy) jump = true;
-                break;
-            case 0x04: // rpo
-                if (!state->cf.p) jump = true;
-                break;
-            case 0x05: // rpe
-                if (state->cf.p) jump = true;
-                break;
-            case 0x06: // rp
-                if (!state->cf.s) jump = true;
-                break;
-            case 0x07: // rm
-                if (state->cf.s) jump = true;
-                break;
-            default:
-                break;
-        }
+        bool jump = is_cf_cond(n, state);
 
-        if (jump) {
-            state->pc = (uint16_t) (state->memory[state->sp + 1] << 8) + state->memory[state->sp];
-            state->sp += 2;
-        }
+        if (jump) pop_sp(state);
     }
     
     // jnz/jz/jnc/jc/jpo/jpe/jp/jm
     if ((opcode & 0xc7) == 0xc2) {
         uint8_t n = (opcode >> 3) & 0x03;
-        bool jump = false;
-        switch (n) {
-            case 0x00: // jnz
-                if (!state->cf.z) jump = true;
-                break;
-            case 0x01: // jz
-                if (state->cf.z) jump = true;
-                break;
-            case 0x02: // jnc
-                if (!state->cf.cy) jump = true;
-                break;
-            case 0x03: // jc
-                if (state->cf.cy) jump = true;
-                break;
-            case 0x04: // jpo
-                if (!state->cf.p) jump = true;
-                break;
-            case 0x05: // jpe
-                if (state->cf.p) jump = true;
-                break;
-            case 0x06: // jp
-                if (!state->cf.s) jump = true;
-                break;
-            case 0x07: // jm
-                if (state->cf.s) jump = true;
-                break;
-            default:
-                break;
-        }
+        bool jump = is_cf_cond(n, state);
+
+        if (jump) jmp(state);
+        opbytes = 3;
+    }
+
+    // cnz/cz/cnc/cc/cpo/cpe/cp/cm
+    if ((opcode & 0xc7) == 0xc4) {
+        uint8_t n = (opcode >> 3) & 0x03;
+        bool jump = is_cf_cond(n, state);
 
         if (jump) {
-            state->pc = (uint16_t) ((state->memory[state->pc + 2] << 8) + state->memory[state->pc + 1]);
-            opbytes = 3;
+            push_sp(state);
+            jmp(state);
         }
+        opbytes = 3;
     }
 
     // pop
@@ -457,7 +451,6 @@ bool emulate8080(state8080 *state)
         printf("%02x\n", state->memory[state->sp - 1]);
         printf("%02x\n", state->memory[state->sp - 2]);
         state->sp -= 2;
-
     }
 
     switch (opcode) {
@@ -613,10 +606,10 @@ bool emulate8080(state8080 *state)
         // case 0xc1: pop b
         // case 0xc2: jnz
         case 0xc3: // jmp
-            state->pc = (uint16_t) ((state->memory[state->pc + 2] << 8) + state->memory[state->pc + 1]);
+            jmp(state);
             opbytes = 3;
             break;
-
+        // case 0xc4: cnz
         // case 0xc5: push b
 
         // case 0xc8: rz
@@ -626,36 +619,53 @@ bool emulate8080(state8080 *state)
             break;
         // case 0xca: jz
         // case 0xcb: nop
+        // case 0xcc: cz
+
+        case 0xcd: // call
+            push_sp(state);
+            jmp(state);
+            break;
 
         // case 0xd0: rnc
         // case 0xd1: pop d
         // case 0xd2: jnc
-
+        
+        // case 0xd4: cnc
         // case 0xd5: push d
 
         // case 0xd8: rc 
         // case 0xd9: nop
         // case 0xda: jc
 
+        // case 0xdc: cc
+        // case 0xdd: nop
+
         // case 0xe0: rpo
         // case 0xe1: pop h
         // case 0xe2: jpo
 
+        // case 0xe4: cpo
         // case 0xe5: push h
 
         // case 0xe8: rpe
 
         // case 0xea: jpe
 
+        // case 0xec: cpe
+
         // case 0xf0: rp
         // case 0xf1: pop psw
         // case 0xf2: jpe
 
+        // case 0xf4: cp
         // case 0xf5: push psw
 
         // case 0xf8: rm
 
         // case 0xfa: jm
+
+        // case 0xfc: cm
+        // case 0xfd: nop
 
     
         default:
