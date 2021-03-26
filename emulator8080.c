@@ -287,9 +287,18 @@ bool emulate8080(state8080 *state)
     if ((opcode & 0xc0) == 0x80) {
         uint8_t src_reg = opcode & 0x07;
         uint8_t src_val = *lkp_reg(src_reg, state);
-        
         uint8_t op_n = (opcode >> 3) & 0x03;
+
         do_arith_op(op_n, src_val, state);
+    }
+
+    // adi/aci/sui/sbi/ani/xri/ori/cpi
+    if ((opcode & 0xc7) == 0xc6) {
+        uint8_t src_val = state->memory[state->pc + 1];
+        uint8_t op_n = (opcode >> 3) & 0x03;
+
+        do_arith_op(op_n, src_val, state);
+        opbytes = 2;
     }
 
     // dad
@@ -588,6 +597,7 @@ bool emulate8080(state8080 *state)
             break;
         // case 0xc4: cnz
         // case 0xc5: push b
+        // case 0xc6: adi
 
         // case 0xc8: rz
         case 0xc9: // ret
@@ -597,11 +607,11 @@ bool emulate8080(state8080 *state)
         // case 0xca: jz
         // case 0xcb: nop
         // case 0xcc: cz
-
         case 0xcd: // call
             push_sp(state);
             jmp(state);
             break;
+        // case 0xce: aci
 
         // case 0xd0: rnc
         // case 0xd1: pop d
@@ -609,6 +619,7 @@ bool emulate8080(state8080 *state)
         
         // case 0xd4: cnc
         // case 0xd5: push d
+        // case 0xd6: sui
 
         // case 0xd8: rc 
         // case 0xd9: nop
@@ -616,6 +627,7 @@ bool emulate8080(state8080 *state)
 
         // case 0xdc: cc
         // case 0xdd: nop
+        // case 0xde: sbi
 
         // case 0xe0: rpo
         // case 0xe1: pop h
@@ -623,12 +635,15 @@ bool emulate8080(state8080 *state)
 
         // case 0xe4: cpo
         // case 0xe5: push h
+        // case 0xe6: ani
 
         // case 0xe8: rpe
 
         // case 0xea: jpe
 
         // case 0xec: cpe
+        // case 0xed: nop
+        // case 0xee: xri
 
         // case 0xf0: rp
         // case 0xf1: pop psw
@@ -636,6 +651,7 @@ bool emulate8080(state8080 *state)
 
         // case 0xf4: cp
         // case 0xf5: push psw
+        // case 0xf6: ori
 
         // case 0xf8: rm
 
@@ -643,6 +659,7 @@ bool emulate8080(state8080 *state)
 
         // case 0xfc: cm
         // case 0xfd: nop
+        // case 0xfe: cpi
 
     
         default:
