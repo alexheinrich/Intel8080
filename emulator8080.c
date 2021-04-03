@@ -63,10 +63,6 @@ void lkp_reg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
             *hi = &state->h;
             *lo = &state->l;
             break;
-        case 0x03:
-            *lo = (uint8_t *) &state->sp;
-            *hi = *lo + 1;
-            break;
 
         default:
             fprintf(stderr, "Unkown source: %02x lookup_register_pair\n", src_n);
@@ -74,35 +70,30 @@ void lkp_reg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
     }
 }
 
+void lkp_reg_pr_sp(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
+{
+    if (src_n == 0x03) {
+        *lo = (uint8_t *) &state->sp;
+        *hi = *lo + 1;
+    } else {
+        lkp_reg_pr(src_n, state, hi, lo);
+    }
+}
+
 void lkp_reg_pr_psw(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
 {
-    switch(src_n) {
-        case 0x00:
-            *hi = &state->b;
-            *lo = &state->c;
-            break;
-        case 0x01:
-            *hi = &state->d;
-            *lo = &state->e;
-            break;
-        case 0x02:
-            *hi = &state->h;
-            *lo = &state->l;
-            break;
-        case 0x03:
-            *hi = &state->a;
-            *lo = (uint8_t *) &state->cf;
-            break;
-
-        default:
-            fprintf(stderr, "Unkown source: %02x lookup_register_pair\n", src_n);
-            exit(1);
+    if (src_n == 0x03) {
+        *hi = &state->a;
+        *lo = (uint8_t *) &state->cf;
+    } else {
+        lkp_reg_pr(src_n, state, hi, lo);
     }
 }
 
 void jmp(state8080 *state)
 {
     state->pc = (uint16_t) ((state->memory[state->pc + 2] << 8) + state->memory[state->pc + 1]);
+    printf("jump dst: %04x\n", state->pc);
 }
 
 void pop_sp(state8080 *state)
@@ -111,10 +102,11 @@ void pop_sp(state8080 *state)
     state->sp += 2;
 }
 
-void push_sp(state8080 *state)
+void push_sp(state8080 *state, uint8_t opbytes)
 {
-    state->memory[state->sp - 1] = (uint8_t) (state->pc >> 8);
-    state->memory[state->sp - 2] = (uint8_t) state->pc;
+    uint16_t pc = (uint16_t) (state->pc + opbytes);
+    state->memory[state->sp - 1] = (uint8_t) (pc >> 8);
+    state->memory[state->sp - 2] = (uint8_t) pc;
     state->sp -= 2;
 }
 
@@ -123,23 +115,31 @@ bool check_cf_con(uint8_t con, state8080 *state)
     switch (con) {
         case 0x00: // ?nz
             if (!state->cf.z) return true;
+            break;
         case 0x01: // ?z
             if (state->cf.z) return true;
+            break;
         case 0x02: // ?nc
             if (!state->cf.cy) return true;
+            break;
         case 0x03: // ?c
             if (state->cf.cy) return true;
+            break;
         case 0x04: // ?po
             if (!state->cf.p) return true;
+            break;
         case 0x05: // ?pe
             if (state->cf.p) return true;
+            break;
         case 0x06: // ?p
             if (!state->cf.s) return true;
+            break;
         case 0x07: // ?m
             if (state->cf.s) return true;
-        default:
-            return false;
+            break;
     }
+
+    return false;
 }
 
 void set_szp(state8080 *state, uint8_t result)
@@ -152,6 +152,7 @@ void set_szp(state8080 *state, uint8_t result)
 void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
 {
     uint16_t buffer;
+    printf("buffer: %u\n", op_n);
     switch (op_n) {
         case 0x00: // add (a <- a + source)
             buffer = (uint16_t) (state->a + src_val);
@@ -177,7 +178,7 @@ void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
             break;
             
         case 0x03: // sbb (a <- a - source)
-            buffer = state->a + (uint8_t) ~(src_val + state->cf.cy) + 0x01;
+            buffer = state->a + (uint8_t) (~(src_val + state->cf.cy) + 0x01);
 
             state->a = (uint8_t) buffer;
             state->cf.cy = !(buffer > 0xff);
@@ -204,7 +205,7 @@ void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
 
         case 0x07: // cmp (a < source)
             {
-                buffer = state->a + (uint8_t) ~src_val + 0x01;
+                buffer = state->a + (uint8_t) (~src_val + 0x01);
 
                 uint8_t result = (uint8_t) buffer;
                 state->cf.cy = !(buffer > 0xff);
@@ -287,7 +288,7 @@ bool emulate8080(state8080 *state)
     if ((opcode & 0xc0) == 0x80) {
         uint8_t src_reg = opcode & 0x07;
         uint8_t src_val = *lkp_reg(src_reg, state);
-        uint8_t op_n = (opcode >> 3) & 0x03;
+        uint8_t op_n = (opcode >> 3) & 0x07;
 
         do_arith_op(op_n, src_val, state);
     }
@@ -295,7 +296,7 @@ bool emulate8080(state8080 *state)
     // adi/aci/sui/sbi/ani/xri/ori/cpi
     if ((opcode & 0xc7) == 0xc6) {
         uint8_t src_val = state->memory[state->pc + 1];
-        uint8_t op_n = (opcode >> 3) & 0x03;
+        uint8_t op_n = (opcode >> 3) & 0x07;
 
         do_arith_op(op_n, src_val, state);
         opbytes = 2;
@@ -389,7 +390,10 @@ bool emulate8080(state8080 *state)
         uint8_t n = (opcode >> 3) & 0x03;
         bool jump = check_cf_con(n, state);
 
-        if (jump) pop_sp(state);
+        if (jump) {
+            pop_sp(state);
+            opbytes = 1;
+        }
     }
     
     // jnz/jz/jnc/jc/jpo/jpe/jp/jm
@@ -397,8 +401,12 @@ bool emulate8080(state8080 *state)
         uint8_t n = (opcode >> 3) & 0x03;
         bool jump = check_cf_con(n, state);
 
-        if (jump) jmp(state);
-        opbytes = 3;
+        if (jump) {
+            jmp(state);
+            opbytes = 0;
+        } else {
+            opbytes = 3;
+        }
     }
 
     // cnz/cz/cnc/cc/cpo/cpe/cp/cm
@@ -407,10 +415,18 @@ bool emulate8080(state8080 *state)
         bool jump = check_cf_con(n, state);
 
         if (jump) {
-            push_sp(state);
+            push_sp(state, 2);
             jmp(state);
+            opbytes = 0;
+        } else {
+            opbytes = 3;
         }
-        opbytes = 3;
+    }
+
+    // rst 0-7
+    if ((opcode & 0xc7) == 0xc7) {
+        push_sp(state, 0);
+        state->pc = (uint16_t) (opcode & 0x38);
     }
 
     // pop
@@ -593,12 +609,12 @@ bool emulate8080(state8080 *state)
         // case 0xc2: jnz
         case 0xc3: // jmp
             jmp(state);
-            opbytes = 3;
+            opbytes = 0;
             break;
         // case 0xc4: cnz
         // case 0xc5: push b
         // case 0xc6: adi
-
+        // case 0xc7: rst 0
         // case 0xc8: rz
         case 0xc9: // ret
             state->pc = (uint16_t) ((state->memory[state->sp + 1] << 8) + state->memory[state->sp]);
@@ -608,59 +624,74 @@ bool emulate8080(state8080 *state)
         // case 0xcb: nop
         // case 0xcc: cz
         case 0xcd: // call
-            push_sp(state);
+            push_sp(state, 2);
             jmp(state);
+            opbytes = 0;
             break;
         // case 0xce: aci
-
+        // case 0xcf: rst 1
         // case 0xd0: rnc
         // case 0xd1: pop d
         // case 0xd2: jnc
-        
+        case 0xd3: //out
+            // TODO: 0xd3: out    
+            opbytes = 2;
+            break;
         // case 0xd4: cnc
         // case 0xd5: push d
         // case 0xd6: sui
-
+        // case 0xd7: rst 2
         // case 0xd8: rc 
         // case 0xd9: nop
         // case 0xda: jc
-
+        case 0xdb: // in
+            // TODO: 0xdb: in
+            opbytes = 2;
+            break;
         // case 0xdc: cc
         // case 0xdd: nop
         // case 0xde: sbi
-
+        // case 0xdf: rst 3
         // case 0xe0: rpo
         // case 0xe1: pop h
         // case 0xe2: jpo
-
+        // TODO: 0xe3: XTHL
         // case 0xe4: cpo
         // case 0xe5: push h
         // case 0xe6: ani
-
+        // case 0xe7: rst 4
         // case 0xe8: rpe
-
+        // TODO: 0xe9: PCHL
         // case 0xea: jpe
+        case 0xeb: // xchg
+            state->h ^= state->d;
+            state->d ^= state->h;
+            state->h ^= state->d;
 
+            state->l ^= state->e;
+            state->e ^= state->l;
+            state->l ^= state->e;
+            break;
         // case 0xec: cpe
         // case 0xed: nop
         // case 0xee: xri
-
+        // case 0xef: rst 5
         // case 0xf0: rp
         // case 0xf1: pop psw
         // case 0xf2: jpe
-
+        // TODO: 0xf3: DI
         // case 0xf4: cp
         // case 0xf5: push psw
         // case 0xf6: ori
-
+        // case 0xf7: rst 6
         // case 0xf8: rm
-
+        // TODO: 0xf9: SPHL
         // case 0xfa: jm
-
+        // TODO: 0xfb: ei
         // case 0xfc: cm
         // case 0xfd: nop
         // case 0xfe: cpi
-
+        // case 0xff: rst 7
     
         default:
             //unimplemented_instruction(state);
@@ -752,8 +783,11 @@ int32_t main(int32_t argc, char *argv[])
     } else {
         // Emulate
         bool emulate = true;
+        int i = 0;
         while (emulate) {
+            printf("cycle: %d\n", i);
             emulate = emulate8080(&state);
+            i++;
         }
     }
 
