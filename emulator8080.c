@@ -477,7 +477,7 @@ bool emulate8080(state8080 *state)
         case 0x07: // rlc
             buffer = state->a >> 7;
             state->a = (uint8_t) ((uint8_t) (state->a << 1) + buffer);
-            state->cf.cy = buffer;
+            state->cf.cy = buffer != 0;
             break;
         // case 0x08: nop
         // case 0x09: dad b
@@ -494,7 +494,7 @@ bool emulate8080(state8080 *state)
         case 0x0f: // rrc
             buffer = (uint8_t) (state->a << 7);
             state->a = (uint8_t) ((state->a >> 1) + buffer);
-            state->cf.cy = buffer;
+            state->cf.cy = buffer != 0;
             break;
         // case 0x10: nop
         case 0x11: // lxi d
@@ -516,7 +516,7 @@ bool emulate8080(state8080 *state)
         case 0x17: // ral
             buffer = state->a >> 7;
             state->a = (uint8_t) ((uint8_t) (state->a << 1) + state->cf.cy);
-            state->cf.cy = buffer;
+            state->cf.cy = buffer != 0;
             break;
         // case 0x18: nop
         // case 0x19: dad d
@@ -533,7 +533,7 @@ bool emulate8080(state8080 *state)
         case 0x1f: // rar
             buffer = (uint8_t) (state->a << 7);
             state->a = (uint8_t) ((state->a >> 1) + state->cf.cy);
-            state->cf.cy = buffer;
+            state->cf.cy = buffer != 0;
             break;
         // case 0x20: nop
         case 0x21: // lxi h

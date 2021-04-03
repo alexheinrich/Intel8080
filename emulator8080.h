@@ -5,14 +5,14 @@
 #include <stdint.h>
 
 typedef struct {
-    bool cy:1; // carry over
+    uint8_t cy:1; // carry over
     uint8_t pad3:1;
-    bool p:1; // parity
+    uint8_t p:1; // parity
     uint8_t pad2:1;
-    bool ac:1;// auxiliary carry over
+    uint8_t ac:1;// auxiliary carry over
     uint8_t pad1:1;
-    bool z:1; // zero
-    bool s:1; // sign
+    uint8_t z:1; // zero
+    uint8_t s:1; // sign
 } condition_flags;
 
 typedef struct {
