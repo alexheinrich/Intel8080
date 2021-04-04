@@ -530,9 +530,9 @@ bool emulate8080(state8080 *state)
         // case 0x1d: dcr e
         // case 0x1e: mvi e, d8
         case 0x1f: // rar
-            buffer = (uint8_t) (state->a << 7);
-            state->a = (uint8_t) ((state->a >> 1) + state->cf.cy);
-            state->cf.cy = buffer != 0;
+            buffer = state->a & 0x01;
+            state->a = (uint8_t) ((state->a >> 1) + (state->cf.cy << 7));
+            state->cf.cy = (uint8_t) buffer;
             break;
         // case 0x20: nop
         case 0x21: // lxi h
