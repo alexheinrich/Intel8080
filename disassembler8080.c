@@ -364,7 +364,7 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
             printf("xthl");
             break;
         case 0xe4:
-            printf("cop  %02x%02x", buffer[pc+2], buffer[pc+1]);
+            printf("cpo  %02x%02x", buffer[pc+2], buffer[pc+1]);
             opbytes = 3;
             break;
         case 0xe5:

@@ -1,3 +1,6 @@
+#include "emulator8080.h"
+#include "utils.h"
+
 #include <errno.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -43,3 +46,41 @@ size_t get_fsize(FILE *f)
     return fsize;
 }
 
+state8080 load_rom(FILE *f, size_t fsize)
+{
+    // 64KiB
+    uint8_t *buffer = malloc(0x10000);
+    if (buffer == NULL) {
+        printf("malloc() failed. Errno: %s.\n", strerror(errno));
+        exit(1);
+    }
+    memset(buffer, 0, 0x10000);
+
+    if (fread(buffer, sizeof(uint8_t), fsize, f) != fsize) {
+        printf("fread() failed. Errno: %s.\n", strerror(errno));
+        exit_and_free(buffer);
+    }
+
+    state8080 state = {
+        .a = 0,
+        .b = 0,
+        .c = 0,
+        .d = 0,
+        .e = 0,
+        .h = 0,
+        .l = 0,
+        .pc = 0,
+        .sp = 0,
+        .memory = buffer,
+        .cf = {
+            .s = 0,
+            .z = 0,
+            .ac = 0,
+            .p = 0,
+            .cy = 0
+        },
+        .interrupts_enabled = 0
+    };
+
+    return state;
+}
