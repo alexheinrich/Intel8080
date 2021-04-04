@@ -411,18 +411,13 @@ bool emulate8080(state8080 *state)
     // cnz/cz/cnc/cc/cpo/cpe/cp/cm
     if ((opcode & 0xc7) == 0xc4) {
         uint8_t n = (opcode >> 3) & 0x07;
-        printf("opcode %02x\n", opcode);
-        printf("n %u\n", n);
-        printf("parity %u\n", state->cf.p);
         bool jump = check_cf_con(n, state);
 
         if (jump) {
-            printf("jmp\n");
             push_sp(state, 3);
             jmp(state);
             opbytes = 0;
         } else {
-            printf("no jmp\n");
             opbytes = 3;
         }
     }
