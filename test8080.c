@@ -94,6 +94,7 @@ void compare_states(state8080 *source, state8080 *target)
     }
 
     if (halt) {
+        printf("TEST FAILED.\n");
         //exit(1);
     }
 }
@@ -144,13 +145,20 @@ void parse_mem_write(char *str_ptr, state8080 *state)
             uint16_t mem_loc_hex = (uint16_t) (strtol(mem_loc, NULL, 16));
             uint8_t target = (uint8_t) (strtol(token, NULL, 16));
             if (state->memory[mem_loc_hex] != target) {
-                printf("mem_write: %s\n", token);
+                printf("TEST FAILED.\n");
                 printf("Memory write incorrect:");
                 printf("state->memory[%04x]: %02x ", mem_loc_hex, state->memory[mem_loc_hex]);
                 printf("target: %02x\n", target);
             }
         }
     }
+}
+
+void parse_io_write(char *str_ptr, state8080 *state)
+{
+    (void) str_ptr;
+    (void) state;
+    // TODO
 }
 
 void exec_test_case(char **line_ptr, size_t *n, FILE *f)
@@ -181,7 +189,7 @@ void exec_test_case(char **line_ptr, size_t *n, FILE *f)
         } else if (strcmp(h_str, "ram") == 0) {
             parse_mem_write(line_cpy, &state);
         } else if (strcmp(h_str, "io") == 0) {
-            // TODO
+            parse_io_write(line_cpy, &state);
         }
     }
 
