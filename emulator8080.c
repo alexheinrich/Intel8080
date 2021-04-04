@@ -1,6 +1,5 @@
 #include "emulator8080.h"
 #include "debug8080.h"
-#include "disassembler8080.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -65,7 +64,7 @@ void lkp_reg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
             break;
 
         default:
-            fprintf(stderr, "Unkown source: %02x lookup_register_pair\n", src_n);
+            fprintf(stderr, "Unkown source: %02x lkp_reg_pr\n", src_n);
             exit(1);
     }
 }
@@ -307,7 +306,7 @@ bool emulate8080(state8080 *state)
         uint8_t *hi, *lo;
         uint8_t src_num = (uint8_t) ((opcode & 0x30) >> 4);
 
-        lkp_reg_pr(src_num, state, &hi, &lo);
+        lkp_reg_pr_sp(src_num, state, &hi, &lo);
 
         uint32_t src = (uint32_t) ((*hi << 8) + *lo);
 
@@ -323,7 +322,7 @@ bool emulate8080(state8080 *state)
         uint8_t *hi, *lo; 
         uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
 
-        lkp_reg_pr(src, state, &hi, &lo);
+        lkp_reg_pr_sp(src, state, &hi, &lo);
 
         *hi = state->memory[state->pc + 2];
         *lo = state->memory[state->pc + 1];
@@ -336,7 +335,7 @@ bool emulate8080(state8080 *state)
         uint8_t *hi, *lo; 
         uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
 
-        lkp_reg_pr(src, state, &hi, &lo);
+        lkp_reg_pr_sp(src, state, &hi, &lo);
         
         uint16_t buf = *lo + 1;
         *lo = (uint8_t) buf;
@@ -348,7 +347,7 @@ bool emulate8080(state8080 *state)
         uint8_t *hi, *lo; 
         uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
 
-        lkp_reg_pr(src, state, &hi, &lo);
+        lkp_reg_pr_sp(src, state, &hi, &lo);
 
         uint16_t buf = *lo - 1;
         *lo = (uint8_t) buf;
@@ -704,99 +703,3 @@ bool emulate8080(state8080 *state)
     return true;
 }
 
-void exit_and_free(uint8_t *buffer)
-{
-    free(buffer);
-    exit(1);
-}
-
-int32_t main(int32_t argc, char *argv[])
-{
-    if (argc < 2) {
-        printf("Usage: %s <filename>\n", argv[0]);
-        exit(1);
-    }
-
-    FILE *f = fopen(argv[1], "rb");
-    if (f == NULL) {
-        printf("fopen() failed to open: %s. Errno: %s.\n", argv[1], strerror(errno));
-        exit(1);
-    }
-
-    if (fseek(f, 0L, SEEK_END) < 0) {
-        printf("fseek() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
-    }
-
-    off_t fsize_off = ftell(f);
-    if (fsize_off < 0) {
-        printf("ftell() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
-    }
-    size_t fsize = (size_t) fsize_off;
-
-    if (fseek(f, 0L, SEEK_SET) < 0) {
-        printf("fseek() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
-    }
-
-    // 64KiB
-    uint8_t *buffer = malloc(0x10000);
-    if (buffer == NULL) {
-        printf("malloc() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
-    }
-    memset(buffer, 0, 0x10000);
-
-    if (fread(buffer, sizeof(uint8_t), fsize, f) != fsize) {
-        printf("fread() failed. Errno: %s.\n", strerror(errno));
-        exit_and_free(buffer);
-    }
-
-    state8080 state = {
-        .a = 0,
-        .b = 0,
-        .c = 0,
-        .d = 0,
-        .e = 0,
-        .h = 0,
-        .l = 0,
-        .pc = 0,
-        .sp = 0,
-        .memory = buffer,
-        .cf = {
-            .s = 0,
-            .z = 0,
-            .ac = 0,
-            .p = 0,
-            .cy = 0
-        },
-        .interrupts_enabled = 0
-    };
-    
-    if (argc > 2 && strcmp(argv[2], "-d") == 0) {
-        size_t bc = 0;
-        // Disassemble 
-        while (bc < fsize) {
-            bc += disassemble_op8080(state.memory, bc);
-        }
-    } else {
-        // Emulate
-        bool emulate = true;
-        int i = 0;
-        while (emulate) {
-            printf("cycle: %d\n", i);
-            emulate = emulate8080(&state);
-            i++;
-        }
-    }
-
-    if (fclose(f) != 0) {
-        printf("fclose() failed. Errno: %s.\n", strerror(errno));
-        exit_and_free(buffer);
-    }
-
-    free(buffer);
-
-    return 0;
-}
