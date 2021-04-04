@@ -386,7 +386,7 @@ bool emulate8080(state8080 *state)
 
     // rnz/rz/rnc/rc/rpo/rpe/rp/rm
     if ((opcode & 0xc7) == 0xc0) {
-        uint8_t n = (opcode >> 3) & 0x03;
+        uint8_t n = (opcode >> 3) & 0x07;
         bool jump = check_cf_con(n, state);
 
         if (jump) {
@@ -397,7 +397,7 @@ bool emulate8080(state8080 *state)
     
     // jnz/jz/jnc/jc/jpo/jpe/jp/jm
     if ((opcode & 0xc7) == 0xc2) {
-        uint8_t n = (opcode >> 3) & 0x03;
+        uint8_t n = (opcode >> 3) & 0x07;
         bool jump = check_cf_con(n, state);
 
         if (jump) {
@@ -410,21 +410,26 @@ bool emulate8080(state8080 *state)
 
     // cnz/cz/cnc/cc/cpo/cpe/cp/cm
     if ((opcode & 0xc7) == 0xc4) {
-        uint8_t n = (opcode >> 3) & 0x03;
+        uint8_t n = (opcode >> 3) & 0x07;
+        printf("opcode %02x\n", opcode);
+        printf("n %u\n", n);
+        printf("parity %u\n", state->cf.p);
         bool jump = check_cf_con(n, state);
 
         if (jump) {
-            push_sp(state, 2);
+            printf("jmp\n");
+            push_sp(state, 3);
             jmp(state);
             opbytes = 0;
         } else {
+            printf("no jmp\n");
             opbytes = 3;
         }
     }
 
     // rst 0-7
     if ((opcode & 0xc7) == 0xc7) {
-        push_sp(state, 0);
+        push_sp(state, 1);
         state->pc = (uint16_t) (opcode & 0x38);
     }
 
@@ -623,7 +628,7 @@ bool emulate8080(state8080 *state)
         // case 0xcb: nop
         // case 0xcc: cz
         case 0xcd: // call
-            push_sp(state, 2);
+            push_sp(state, 3);
             jmp(state);
             opbytes = 0;
             break;
