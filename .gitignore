@@ -9,4 +9,5 @@ rom/
 disassembler8080
 emulator8080
 compile_commands.json
+test/test_cases.txt
 
