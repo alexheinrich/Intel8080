@@ -13,7 +13,7 @@ void exit_and_free(uint8_t *buffer)
     exit(1);
 }
 
-FILE *open_f(char *filepath)
+FILE *open_f(const char *filepath)
 {
     FILE *f = fopen(filepath, "rb");
     if (f == NULL) {
@@ -22,6 +22,16 @@ FILE *open_f(char *filepath)
     }
     
     return f;
+}
+
+bool close_f(FILE *f)
+{
+    if (fclose(f) != 0) {
+        printf("fclose() failed. Errno: %s.\n", strerror(errno));
+        return false;
+    }
+
+    return true;
 }
 
 size_t get_fsize(FILE *f)
@@ -46,22 +56,33 @@ size_t get_fsize(FILE *f)
     return fsize;
 }
 
-state8080 load_rom(FILE *f, size_t fsize)
+ssize_t load_rom(state8080 *state, const char *filepath)
 {
+    FILE *f = open_f(filepath);
+    size_t fsize = get_fsize(f);
+
     // 64KiB
     uint8_t *buffer = malloc(0x10000);
     if (buffer == NULL) {
         printf("malloc() failed. Errno: %s.\n", strerror(errno));
-        exit(1);
+        close_f(f);
+
+        return -1;
     }
+
     memset(buffer, 0, 0x10000);
 
     if (fread(buffer, sizeof(uint8_t), fsize, f) != fsize) {
         printf("fread() failed. Errno: %s.\n", strerror(errno));
-        exit_and_free(buffer);
+        free(buffer);
+        close_f(f);
+
+        return -1;
     }
 
-    state8080 state = {
+    close_f(f);
+
+    *state = (state8080) {
         .a = 0,
         .b = 0,
         .c = 0,
@@ -81,6 +102,8 @@ state8080 load_rom(FILE *f, size_t fsize)
         },
         .interrupts_enabled = 0
     };
-
-    return state;
+    
+    return (ssize_t) fsize;
 }
+
+

@@ -326,8 +326,9 @@ bool emulate8080(state8080 *state)
 
         *hi = state->memory[state->pc + 2];
         *lo = state->memory[state->pc + 1];
-        opbytes = 3;
-        printf("lxi\n");
+        
+        state->pc += 3;
+        return true;
     }
     
     // inx

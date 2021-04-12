@@ -20,30 +20,30 @@ int32_t main(int32_t argc, char *argv[])
     }
 
     if (strcmp(argv[1], "-t") == 0) {
-        FILE *f = open_f("test/test_cases.txt");
-        char *line_ptr = NULL;
-        size_t n = 0; 
-        
         int count = 500;
 
-        while (count > 0) {
+        FILE *f = open_f("test/test_cases.txt");
+        while (count > 0 && exec_test_case(f)) {
             printf("------ %d\n", count);
-            exec_test_case(&line_ptr, &n, f);
             count--;
         }
+
+        close_f(f);
 
         return 0;
     }
 
-    FILE *f = open_f(argv[1]);
-    size_t fsize = get_fsize(f);
-    state8080 state = load_rom(f, fsize);
+    state8080 state;
+    ssize_t fsize = load_rom(&state, argv[1]);
+    if (fsize < 0) {
+        return 1;
+    }
     
     if (argc > 2 && strcmp(argv[2], "-d") == 0) {
         size_t bc = 0;
 
         // Disassemble 
-        while (bc < fsize) {
+        while (bc < (size_t) fsize) {
             bc += disassemble_op8080(state.memory, bc);
         }
     } else {
@@ -55,11 +55,6 @@ int32_t main(int32_t argc, char *argv[])
             emulate = emulate8080(&state);
             i++;
         }
-    }
-
-    if (fclose(f) != 0) {
-        printf("fclose() failed. Errno: %s.\n", strerror(errno));
-        exit_and_free(state.memory);
     }
 
     free(state.memory);
