@@ -19,4 +19,5 @@ FILE *open_f(const char *filepath);
 bool close_f(FILE *f);
 size_t get_fsize(FILE *f);
 ssize_t load_rom(state8080 *state, const char *filepath);
+void unload_rom(state8080 *state);
 

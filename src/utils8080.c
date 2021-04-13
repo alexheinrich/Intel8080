@@ -1,5 +1,5 @@
 #include "emulator8080.h"
-#include "utils.h"
+#include "utils8080.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -17,7 +17,7 @@ FILE *open_f(const char *filepath)
 {
     FILE *f = fopen(filepath, "rb");
     if (f == NULL) {
-        printf("fopen() failed to open: %s. Errno: %s.\n", filepath, strerror(errno));
+        printf("failed to open: %s. Errno: %s.\n", filepath, strerror(errno));
         exit(1);
     }
     
@@ -106,4 +106,8 @@ ssize_t load_rom(state8080 *state, const char *filepath)
     return (ssize_t) fsize;
 }
 
+void unload_rom(state8080 *state)
+{
+    free(state->memory);
+}
 

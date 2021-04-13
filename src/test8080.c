@@ -1,5 +1,5 @@
 #include "emulator8080.h"
-#include "utils.h"
+#include "utils8080.h"
 
 #include <assert.h>
 #include <errno.h>

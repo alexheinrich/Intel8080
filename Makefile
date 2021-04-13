@@ -1,7 +1,7 @@
 GCC := GCC
 C_FLAGS := -Og -g -Wall -Wextra -Wconversion -Wsign-conversion
 
-SRC := main.c emulator8080.c debug8080.c disassembler8080.c utils.c test8080.c
+SRC := main.c emulator8080.c debug8080.c disassembler8080.c utils8080.c test8080.c
 OBJ := $(SRC:.c=.o)
 OBJ_P := $(OBJ:%=build/%)
 
