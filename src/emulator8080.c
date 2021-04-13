@@ -368,8 +368,8 @@ bool emulate8080(state8080 *state)
                 state->memory[addr + 1] = state->l;
                 break;
             case 0x01: // lhld
-                state->h = state->memory[addr];
-                state->l = state->memory[addr + 1];
+                state->h = state->memory[addr + 1];
+                state->l = state->memory[addr];
                 break;
             case 0x02: // sta
                 state->memory[addr] = state->a;
@@ -553,12 +553,17 @@ bool emulate8080(state8080 *state)
 
                 if (state->cf.ac || b_l > 0x09) {
                     b_l += 0x06;
-                    state->cf.ac = b_l > 0x0f;
+                    printf("b_l: %u\n", b_l);
+                    //state->cf.ac = b_l > 0x0f;
+                } else {
+                    //state->cf.ac = 0;
                 }
 
                 if (state->cf.cy || b_h > 0x09) {
                     b_h += 0x06;
                     state->cf.cy = b_h > 0x0f;
+                } else {
+                    state->cf.cy = 0;
                 }
 
                 state->a = (uint8_t) ((b_h << 4) + b_l);
