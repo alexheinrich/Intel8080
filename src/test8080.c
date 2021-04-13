@@ -27,6 +27,13 @@ static void init_state_mem(state8080 *state, const uint8_t *opbytes)
     memcpy(state->memory + state->pc, opbytes, 3);
 }
 
+static void destroy_state_mem(state8080 *state)
+{
+    if (state->memory != NULL) {
+        free(state->memory);
+    }
+}
+
 static bool compare_states(const state8080 *source, const state8080 *target)
 {
     bool passed = true;
@@ -198,9 +205,9 @@ bool exec_test_case(FILE *f)
         }
     }
 
-    free(state.memory);
+    destroy_state_mem(&state);
+
     if (line_ptr != NULL) {
-        printf("line_ptr %p\n", line_ptr);
         free(line_ptr);
     }
 

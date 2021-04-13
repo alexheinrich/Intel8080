@@ -1,9 +1,16 @@
-all: emulator8080
-clean:
-	rm -f *.o emulator8080
-emulator8080: main.o emulator8080.o debug8080.o disassembler8080.o utils.o test8080.o
-	gcc -g main.o emulator8080.o debug8080.o disassembler8080.o utils.o test8080.o -o emulator8080
-%.o: %.c $(wildcard *.h) Makefile
-	bear -- gcc $< -Og -g -Wall -Wextra -Wconversion -Wsign-conversion -c -o $@
+GCC := GCC
+C_FLAGS := -Og -g -Wall -Wextra -Wconversion -Wsign-conversion
+
+SRC := main.c emulator8080.c debug8080.c disassembler8080.c utils.c test8080.c
+OBJ := $(SRC:.c=.o)
+OBJ_P := $(OBJ:%=build/%)
+
+build/%.o: src/%.c $(wildcard *.h) Makefile
+	bear -- gcc $(C_FLAGS) -c -o $@ $<  
+emulator8080: $(OBJ_P)
+	gcc -g $^ -o emulator8080
 run_test: emulator8080
 	valgrind --leak-check=full --show-leak-kinds=all ./emulator8080 -t
+all: emulator8080
+clean:
+	rm -rf build/*.o *.dSYM/ emulator8080
