@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool is_even_parity(uint8_t number)
+static bool is_even_parity(uint8_t number)
 {
     uint32_t t1 = number ^ (number >> 4);
     uint32_t t2 = t1 ^ (t1 >> 2);
@@ -18,7 +18,7 @@ bool is_even_parity(uint8_t number)
     return !(t3 & 0x01);
 }
 
-uint8_t *lkp_reg(uint8_t register_number, state8080 *state)
+static uint8_t *lkp_reg(uint8_t register_number, state8080 *state)
 {
     switch (register_number) {
         case 0:
@@ -47,7 +47,7 @@ uint8_t *lkp_reg(uint8_t register_number, state8080 *state)
 
 }
 
-void lkp_reg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
+static void lkp_reg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
 {
     switch(src_n) {
         case 0x00:
@@ -69,7 +69,7 @@ void lkp_reg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
     }
 }
 
-void lkp_reg_pr_sp(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
+static void lkp_reg_pr_sp(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
 {
     if (src_n == 0x03) {
         *lo = (uint8_t *) &state->sp;
@@ -79,7 +79,7 @@ void lkp_reg_pr_sp(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
     }
 }
 
-void lkp_reg_pr_psw(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
+static void lkp_reg_pr_psw(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
 {
     if (src_n == 0x03) {
         *hi = &state->a;
@@ -89,19 +89,19 @@ void lkp_reg_pr_psw(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
     }
 }
 
-void jmp(state8080 *state)
+static void jmp(state8080 *state)
 {
     state->pc = (uint16_t) ((state->memory[state->pc + 2] << 8) + state->memory[state->pc + 1]);
     printf("jump dst: %04x\n", state->pc);
 }
 
-void pop_sp(state8080 *state)
+static void pop_sp(state8080 *state)
 {
     state->pc = (uint16_t) (state->memory[state->sp + 1] << 8) + state->memory[state->sp];
     state->sp += 2;
 }
 
-void push_sp(state8080 *state, uint8_t opbytes)
+static void push_sp(state8080 *state, uint8_t opbytes)
 {
     uint16_t pc = (uint16_t) (state->pc + opbytes);
     state->memory[state->sp - 1] = (uint8_t) (pc >> 8);
@@ -109,7 +109,7 @@ void push_sp(state8080 *state, uint8_t opbytes)
     state->sp -= 2;
 }
 
-bool check_cf_con(uint8_t con, state8080 *state)
+static bool check_cf_con(uint8_t con, state8080 *state)
 {
     switch (con) {
         case 0x00: // ?nz
@@ -141,14 +141,14 @@ bool check_cf_con(uint8_t con, state8080 *state)
     return false;
 }
 
-void set_szp(state8080 *state, uint8_t result)
+static void set_szp(state8080 *state, uint8_t result)
 {
     state->cf.s = (result & 0x80) == 0x80;
     state->cf.z = result == 0x00;
     state->cf.p = is_even_parity(result);
 }
 
-void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
+static void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
 {
     uint16_t buffer;
     printf("buffer: %u\n", op_n);
