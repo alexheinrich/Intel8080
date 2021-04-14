@@ -151,7 +151,6 @@ static void set_szp(state8080 *state, uint8_t result)
 static void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
 {
     uint16_t buffer;
-    printf("buffer: %u\n", op_n);
     switch (op_n) {
         case 0x00: // add (a <- a + source)
             buffer = (uint16_t) (state->a + src_val);
@@ -207,7 +206,11 @@ static void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
                 buffer = state->a + (uint8_t) (~src_val + 0x01);
 
                 uint8_t result = (uint8_t) buffer;
-                state->cf.cy = !(buffer > 0xff);
+                if (src_val == 0) {
+                    state->cf.cy = 0;
+                } else {
+                    state->cf.cy = !(buffer > 0xff);
+                }
 
                 set_szp(state, result);
                 break;
