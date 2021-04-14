@@ -139,12 +139,15 @@ static bool parse_mem_write(char *str_ptr, state8080 *state)
             char *mem_loc = strsep(&token, ":");
             uint16_t mem_loc_hex = (uint16_t) (strtol(mem_loc, NULL, 16));
             uint8_t target = (uint8_t) (strtol(token, NULL, 16));
+            
+            printf("state->memory[%04x]: %02x ", mem_loc_hex, state->memory[mem_loc_hex]);
+            printf("target: %02x\n", target);
+
             if (state->memory[mem_loc_hex] != target) {
-                printf("Memory write incorrect:");
-                printf("state->memory[%04x]: %02x ", mem_loc_hex, state->memory[mem_loc_hex]);
-                printf("target: %02x\n", target);
                 printf(KRED "Mem write test failed.\n" KNRM);
                 success = false;
+            } else {
+                printf(KGRN "Mem write test passed.\n" KNRM);
             }
         }
     }
