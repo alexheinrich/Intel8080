@@ -225,7 +225,7 @@ bool exec_test_case(FILE *f)
             get_instr_opbytes(line_cpy, opbytes);
         } else if (strcmp(h_str, "pre") == 0) {
             init_state_mem(&state, opbytes, line_cpy);
-            emulate8080(&state);
+            emulate8080(&state, false);
         } else if (strcmp(h_str, "post") == 0) {
             state8080 target_state;
             parse_state(&target_state, line_cpy);

@@ -62,7 +62,7 @@ int32_t main(int32_t argc, char *argv[])
         }
         
         int n = 0;
-        while (emulate8080(&state)) {
+        while (emulate8080(&state, true)) {
             printf("cycle: %d\n", n);
             n++;
         }

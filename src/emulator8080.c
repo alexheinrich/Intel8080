@@ -218,13 +218,15 @@ static void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
     }
 }
 
-bool emulate8080(state8080 *state)
+bool emulate8080(state8080 *state, bool debug)
 {
     unsigned char opcode = state->memory[state->pc];
     uint8_t opbytes = 1;
-
     uint32_t buffer;
-    print_state_pre(state);
+    
+    if (debug) {
+        print_state_pre(state);
+    }
 
     // mov (and hlt)
     if ((opcode & 0xc0) == 0x40) {
@@ -708,7 +710,10 @@ bool emulate8080(state8080 *state)
 
     state->pc = state->pc + opbytes;
 
-    print_state_post(state);
+    if (debug) {
+        print_state_post(state);
+    }
+
     return true;
 }
 
