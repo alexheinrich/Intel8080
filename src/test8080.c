@@ -1,3 +1,4 @@
+#include "disassembler8080.h"
 #include "emulator8080.h"
 #include "utils8080.h"
 
@@ -10,12 +11,13 @@
 
 static void get_instr_opbytes(char *str_ptr, uint8_t *opbytes)
 {
-    printf("%s", str_ptr);
     for (uint32_t c = 0; c < 3; ++c) {
         char *token;
         token = strsep(&str_ptr, "\n\t ");
         opbytes[c] = (uint8_t) strtol(token, NULL, 16);
     }
+    
+    disassemble_op8080((unsigned char *) opbytes, 0);
 }
 
 static bool compare_states(const state8080 *source, const state8080 *target)
@@ -84,9 +86,9 @@ static bool compare_states(const state8080 *source, const state8080 *target)
     }
 
     if (passed) {
-        printf(KGRN "TEST PASSED.\n" KNRM);
+        printf(KGRN "State test passed.\n" KNRM);
     } else {
-        printf(KRED "TEST FAILED.\n" KNRM);
+        printf(KRED "State test failed.\n" KNRM);
     }
 
     return passed;
@@ -138,10 +140,10 @@ static bool parse_mem_write(char *str_ptr, state8080 *state)
             uint16_t mem_loc_hex = (uint16_t) (strtol(mem_loc, NULL, 16));
             uint8_t target = (uint8_t) (strtol(token, NULL, 16));
             if (state->memory[mem_loc_hex] != target) {
-                printf(KRED "TEST FAILED.\n" KNRM);
                 printf("Memory write incorrect:");
                 printf("state->memory[%04x]: %02x ", mem_loc_hex, state->memory[mem_loc_hex]);
                 printf("target: %02x\n", target);
+                printf(KRED "Mem write test failed.\n" KNRM);
                 success = false;
             }
         }
