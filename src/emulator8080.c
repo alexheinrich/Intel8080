@@ -1,5 +1,6 @@
 #include "emulator8080.h"
 #include "debug8080.h"
+#include "shift_register.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -8,6 +9,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static uint8_t get_input(uint8_t port)
+{
+    switch (port) {
+        case 0x03:
+            printf("get val!\n\n\n");
+            return sreg_get_val();
+        default:
+            return 0;
+    }
+}
+
+static void write_output(uint8_t port, uint8_t val)
+{
+    switch (port) {
+        case 0x02: 
+            printf("set shit by val! %u\n\n\n", val);
+            sreg_set_shift(val);
+            break;
+        case 0x04:
+            printf("push val! %u\n\n\n", val);
+            sreg_push_val(val);
+            break;
+        default:
+            break;
+    }
+}
 
 static bool is_even_parity(uint8_t number)
 {
@@ -631,7 +659,7 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xc7: rst 0
         // case 0xc8: rz
         case 0xc9: // ret
-            state->pc = (uint16_t) ((state->memory[state->sp + 1] << 8) + state->memory[state->sp]);
+            state->pc = (uint16_t) ((state->memory[state->sp + 1] << 8) + state->memory[state->sp] - 1);
             state->sp += 2;
             break;
         // case 0xca: jz
@@ -648,7 +676,7 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xd1: pop d
         // case 0xd2: jnc
         case 0xd3: //out
-            // TODO: 0xd3: out    
+            write_output(state->memory[state->pc + 1], state->a);
             opbytes = 2;
             break;
         // case 0xd4: cnc
@@ -659,7 +687,7 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xd9: nop
         // case 0xda: jc
         case 0xdb: // in
-            // TODO: 0xdb: in
+            state->a = get_input(state->memory[state->pc + 1]);
             opbytes = 2;
             break;
         // case 0xdc: cc
@@ -693,7 +721,7 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xf0: rp
         // case 0xf1: pop psw
         // case 0xf2: jpe
-        // TODO: 0xf3: DI
+        // TODO: 0xf3: di
         // case 0xf4: cp
         // case 0xf5: push psw
         // case 0xf6: ori

@@ -40,10 +40,11 @@ int32_t main(int32_t argc, char *argv[])
     } else if (strcmp(argv[1], "-d") == 0) {
         if (argc < 3) {
             printf("Enter file to disassemble\n");
+            return 1;
         }
 
         state8080 state;
-        ssize_t fsize = load_rom(&state, argv[1]);
+        ssize_t fsize = load_rom(&state, argv[2]);
         if (fsize < 0) {
             return 1;
         }
@@ -62,9 +63,11 @@ int32_t main(int32_t argc, char *argv[])
         }
         
         int n = 0;
+        printf("cycle: %d\n", n);
         while (emulate8080(&state, true)) {
-            printf("cycle: %d\n", n);
             n++;
+            printf("cycle: %d\n", n);
+            if (n > 100000) break;
         }
 
         unload_rom(&state);
