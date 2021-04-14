@@ -179,7 +179,11 @@ static void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
             buffer = state->a + (uint8_t) (~(src_val + state->cf.cy) + 0x01);
 
             state->a = (uint8_t) buffer;
-            state->cf.cy = !(buffer > 0xff);
+            if ((src_val + state->cf.cy) == 0) {
+                state->cf.cy = 0;
+            } else {
+                state->cf.cy = !(buffer > 0xff);
+            }
             set_szp(state, state->a);
             break;
 
