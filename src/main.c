@@ -29,10 +29,9 @@ int32_t main(int32_t argc, char *argv[])
     }
 
     if (strcmp(argv[1], "-t") == 0) {
-        int num_cases = 500;
         FILE *f = open_f("test/test_cases.txt");
         int n = 0;
-        while (n < num_cases && exec_test_case(f)) {
+        while (exec_test_case(f)) {
             printf("------ %d\n", n);
             n++;
         }
