@@ -4,13 +4,35 @@ Work in progress for a disassembler and emulator of the Intel 8080 8-bit micropr
 
 ## How to build
 
+The emulator uses SDL2, an abstraction layer for low-level machine
+access on Linux, OS X, and Windows. It can be obtained from the
+project's website:
+
+https://libsdl.org/
+
+### Build and install SDL2
+
+```
+tar zxvf SDL2-2.0.14.tar.gz
+cd SDL2-2.0.14
+mkdir build
+cd build
+
+../configure --prefix=/opt/sdl2
+
+make
+make install
+```
+
+### Build emulator
+
 To build the disassembler and emulator, run:
 ```
 make
 ```
 
-This will result in a program called 'disassembler8080', which can then be run in the command line with the path to the file to disassembled as arguments:
+This will result in a program called 'emulator8080', which can then be run in the command line with the path to the rom file to emulate:
 
 ```
-./disassembler8080 <filename>
+./emulator8080 <filename>
 ```

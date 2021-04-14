@@ -2,6 +2,7 @@
 #include "emulator8080.h"
 #include "disassembler8080.h"
 #include "test8080.h"
+#include "video_driver.h"
 
 #include <assert.h>
 #include <errno.h>
