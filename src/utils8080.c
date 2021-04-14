@@ -108,6 +108,8 @@ ssize_t load_rom(state8080 *state, const char *filepath)
 
 void unload_rom(state8080 *state)
 {
-    free(state->memory);
+    if (state->memory != NULL) {
+        free(state->memory);
+    }
 }
 
