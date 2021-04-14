@@ -180,10 +180,10 @@ static void init_state_mem(state8080 *state, const uint8_t *opbytes, char *line_
     state->memory[0x0008] = state->h;
 
     state->memory[0x0009] = 0x31; // lxi sp
-    state->memory[0x000a] = (uint8_t) (state->sp >> 8);
-    state->memory[0x000b] = (uint8_t) state->sp;
+    state->memory[0x000a] = (uint8_t) state->sp;
+    state->memory[0x000b] = (uint8_t) (state->sp >> 8);
 
-    state->memory[0x000d] = 0xf1; // pop psw
+    state->memory[0x000c] = 0xf1; // pop psw
     
     state->pc = 0x000d;
     memcpy(state->memory + state->pc, opbytes, 3);
