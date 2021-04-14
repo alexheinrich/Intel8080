@@ -369,8 +369,8 @@ bool emulate8080(state8080 *state, bool debug)
 
         switch (op_n) {
             case 0x00: // shld
-                state->memory[addr] = state->h;
-                state->memory[addr + 1] = state->l;
+                state->memory[addr + 1] = state->h;
+                state->memory[addr] = state->l;
                 break;
             case 0x01: // lhld
                 state->h = state->memory[addr + 1];

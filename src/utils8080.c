@@ -96,8 +96,11 @@ ssize_t load_rom(state8080 *state, const char *filepath)
         .cf = {
             .s = 0,
             .z = 0,
+            .pad5 = 0, // always 0
             .ac = 0,
+            .pad3 = 0, // always 0
             .p = 0,
+            .pad1 = 1, // always 1
             .cy = 0
         },
         .interrupts_enabled = 0
