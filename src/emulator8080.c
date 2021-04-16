@@ -659,8 +659,9 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xc7: rst 0
         // case 0xc8: rz
         case 0xc9: // ret
-            state->pc = (uint16_t) ((state->memory[state->sp + 1] << 8) + state->memory[state->sp] - 1);
+            state->pc = (uint16_t) ((state->memory[state->sp + 1] << 8) + state->memory[state->sp]);
             state->sp += 2;
+            opbytes = 0;
             break;
         // case 0xca: jz
         // case 0xcb: nop
