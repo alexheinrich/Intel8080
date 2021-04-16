@@ -9,18 +9,31 @@
 #include <stdio.h>
 #include <string.h>
 
-static void get_instr_opbytes(char *str_ptr, uint8_t *opbytes)
+static void get_op(char *str_ptr, uint8_t *op)
 {
     for (uint32_t c = 0; c < 3; ++c) {
-        char *token;
-        token = strsep(&str_ptr, "\n\t ");
-        opbytes[c] = (uint8_t) strtol(token, NULL, 16);
+        char *tok;
+        tok = strsep(&str_ptr, "\n\t ");
+        op[c] = (uint8_t) strtol(tok, NULL, 16);
     }
     
-    disassemble_op8080((unsigned char *) opbytes, 0);
+    disassemble_op8080((unsigned char *) op, 0);
 }
 
-static bool compare_states(const state8080 *source, const state8080 *target)
+static bool op_excl(uint8_t opcode)
+{
+    if (
+        opcode == 0x27 || // daa
+        opcode == 0xdb || // in
+        opcode == 0xe3    // xthl
+    ) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+static bool cmp_states(const state8080 *source, const state8080 *target)
 {
     bool passed = true;
 
@@ -94,6 +107,38 @@ static bool compare_states(const state8080 *source, const state8080 *target)
     return passed;
 }
 
+static bool cmp_mem_write(char *str_ptr, state8080 *state)
+{
+    bool success = true;
+    char *token;
+    while((token = strsep(&str_ptr, "\n\t ")) != NULL) {
+        if (*token != '\0') {
+            char *mem_loc = strsep(&token, ":");
+            uint16_t mem_loc_hex = (uint16_t) (strtol(mem_loc, NULL, 16));
+            uint8_t target = (uint8_t) (strtol(token, NULL, 16));
+            
+            printf("state->memory[%04x]: %02x ", mem_loc_hex, state->memory[mem_loc_hex]);
+            printf("target: %02x\n", target);
+
+            if (state->memory[mem_loc_hex] != target) {
+                printf(KRED "Mem write test failed.\n" KNRM);
+                success = false;
+            } else {
+                printf(KGRN "Mem write test passed.\n" KNRM);
+            }
+        }
+    }
+
+    return success;
+}
+
+static void cmp_io_write(char *str_ptr, state8080 *state)
+{
+    (void) str_ptr;
+    (void) state;
+    // TODO
+}
+
 static void parse_state(state8080 *state, char *str_ptr)
 {
     char *token;
@@ -130,38 +175,6 @@ static void parse_state(state8080 *state, char *str_ptr)
     }
 }
 
-static bool parse_mem_write(char *str_ptr, state8080 *state)
-{
-    bool success = true;
-    char *token;
-    while((token = strsep(&str_ptr, "\n\t ")) != NULL) {
-        if (*token != '\0') {
-            char *mem_loc = strsep(&token, ":");
-            uint16_t mem_loc_hex = (uint16_t) (strtol(mem_loc, NULL, 16));
-            uint8_t target = (uint8_t) (strtol(token, NULL, 16));
-            
-            printf("state->memory[%04x]: %02x ", mem_loc_hex, state->memory[mem_loc_hex]);
-            printf("target: %02x\n", target);
-
-            if (state->memory[mem_loc_hex] != target) {
-                printf(KRED "Mem write test failed.\n" KNRM);
-                success = false;
-            } else {
-                printf(KGRN "Mem write test passed.\n" KNRM);
-            }
-        }
-    }
-
-    return success;
-}
-
-static void parse_io_write(char *str_ptr, state8080 *state)
-{
-    (void) str_ptr;
-    (void) state;
-    // TODO
-}
-
 static void init_state_mem(state8080 *state, const uint8_t *opbytes, char *line_cpy)
 {
     load_rom(state, "test/ram.dat");
@@ -180,8 +193,9 @@ static void init_state_mem(state8080 *state, const uint8_t *opbytes, char *line_
     state->memory[0x0008] = state->h;
 
     state->memory[0x0009] = 0x31; // lxi sp
-    state->memory[0x000a] = (uint8_t) state->sp;
-    state->memory[0x000b] = (uint8_t) (state->sp >> 8);
+    uint16_t sp_pre = state->sp - 2;
+    state->memory[0x000a] = (uint8_t) sp_pre;
+    state->memory[0x000b] = (uint8_t) (sp_pre >> 8);
 
     state->memory[0x000c] = 0xf1; // pop psw
     
@@ -194,64 +208,51 @@ static void destroy_state_mem(state8080 *state)
     unload_rom(state);
 }
 
-static bool op_not_exc(uint8_t opcode)
-{
-    if (
-        opcode != 0x27 && // daa
-        opcode != 0xdb && // in
-        opcode != 0xe3    // xthl
-    ) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
 bool exec_test_case(FILE *f)
 {
-    char *line_ptr = NULL;
+    char *line_p = NULL;
     size_t n = 0; 
     bool success = true;
 
     uint8_t opbytes[3];
     state8080 state;
     for (uint32_t i = 0; i < 5; ++i) {
-        if (getline(&line_ptr, &n, f) == -1) {
+        if (getline(&line_p, &n, f) == -1) {
             success = false;
             break;
         }
 
-        char *line_cpy = line_ptr;
-        printf("%s", line_ptr); 
+        printf("%s", line_p); 
 
-        char *h_str = strsep(&line_cpy, "\n\t ");
+        char *word_p = line_p;
+        char *head = strsep(&word_p, "\n\t ");
 
-        if (strcmp(h_str, "inst") == 0) {
-            get_instr_opbytes(line_cpy, opbytes);
-        } else if (strcmp(h_str, "pre") == 0) {
-            init_state_mem(&state, opbytes, line_cpy);
+        if (strcmp(head, "inst") == 0) {
+            get_op(word_p, opbytes);
+        } else if (strcmp(head, "pre") == 0) {
+            init_state_mem(&state, opbytes, word_p);
             emulate8080(&state, false);
-        } else if (strcmp(h_str, "post") == 0) {
+        } else if (strcmp(head, "post") == 0) {
             state8080 target_state;
-            parse_state(&target_state, line_cpy);
-            if (!compare_states(&state, &target_state) && op_not_exc(opbytes[0])) {
+            parse_state(&target_state, word_p);
+            if (!cmp_states(&state, &target_state) && !op_excl(opbytes[0])) {
                 success = false;
                 break;
             }
-        } else if (strcmp(h_str, "ram") == 0) {
-            if (!parse_mem_write(line_cpy, &state) && op_not_exc(opbytes[0])) {
+        } else if (strcmp(head, "ram") == 0) {
+            if (!cmp_mem_write(word_p, &state) && !op_excl(opbytes[0])) {
                 success = false;
                 break;
             }
-        } else if (strcmp(h_str, "io") == 0) {
-            parse_io_write(line_cpy, &state);
+        } else if (strcmp(head, "io") == 0) {
+            cmp_io_write(word_p, &state);
         }
     }
 
     destroy_state_mem(&state);
 
-    if (line_ptr != NULL) {
-        free(line_ptr);
+    if (line_p != NULL) {
+        free(line_p);
     }
 
     return success;

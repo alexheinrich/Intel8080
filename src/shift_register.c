@@ -5,7 +5,7 @@ static uint8_t shift_offset = 0;
 
 void sreg_push_val(uint8_t val)
 {
-    reg = (uint8_t) ((reg >> 8) + (val << 8));
+    reg = (uint8_t) ((val << 8) | (reg >> 8));
 }
 
 void sreg_set_shift(uint8_t set)
