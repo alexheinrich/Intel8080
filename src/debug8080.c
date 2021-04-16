@@ -6,7 +6,7 @@
 
 const bool show_flags = true;
 
-void print_registers8080(const state8080 *state)
+static void print_registers8080(const state8080 *state)
 {
     printf("--------------------\n");
     printf("Registers:\n");
@@ -20,7 +20,7 @@ void print_registers8080(const state8080 *state)
     printf("sp: 0x%04x\n", state->sp);
 }
 
-void print_condition_flags8080(const state8080 *state)
+static void print_condition_flags8080(const state8080 *state)
 {
     printf("--------------------\n");
     printf("Condition Flags:\n");

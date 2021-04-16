@@ -6,13 +6,13 @@
 
 char registers[8] = {'b', 'c', 'd', 'e', 'h', 'l', 'm', 'a'};
 
-void interpret654(char *opcode_name, uint8_t opcode)
+static void interpret654(char *opcode_name, uint8_t opcode)
 {
     uint8_t destination = (opcode >> 3) & 0x07;
     printf("%s  %c", opcode_name, registers[destination]);
 }
 
-void interpret210(char *opcode_name, uint8_t opcode)
+static void interpret210(char *opcode_name, uint8_t opcode)
 {
     uint8_t source = opcode & 0x07;
     printf("%s  %c", opcode_name, registers[source]);

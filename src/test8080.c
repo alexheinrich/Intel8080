@@ -194,7 +194,7 @@ static void destroy_state_mem(state8080 *state)
     unload_rom(state);
 }
 
-bool op_not_exc(uint8_t opcode)
+static bool op_not_exc(uint8_t opcode)
 {
     if (
         opcode != 0x27 && // daa
