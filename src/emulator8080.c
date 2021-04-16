@@ -253,7 +253,7 @@ static void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
 bool emulate8080(state8080 *state, bool debug)
 {
     unsigned char opcode = state->memory[state->pc];
-    uint8_t opbytes = 1;
+    uint8_t pc_incr = 1;
     uint32_t buffer;
     
     if (debug) {
@@ -289,7 +289,7 @@ bool emulate8080(state8080 *state, bool debug)
         }
 
         *destination_pointer = state->memory[state->pc + 1];
-        opbytes = 2;
+        pc_incr = 2;
     }
 
     // inr
@@ -335,7 +335,7 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t op_n = (opcode >> 3) & 0x07;
 
         do_arith_op(op_n, src_val, state);
-        opbytes = 2;
+        pc_incr = 2;
     }
 
     // dad
@@ -419,7 +419,7 @@ bool emulate8080(state8080 *state, bool debug)
                 exit(1);
         }
 
-        opbytes = 3;
+        pc_incr = 3;
     }
 
     // rnz/rz/rnc/rc/rpo/rpe/rp/rm
@@ -429,7 +429,7 @@ bool emulate8080(state8080 *state, bool debug)
 
         if (jump) {
             pop_sp(state);
-            opbytes = 1;
+            pc_incr = 1;
         }
     }
     
@@ -440,9 +440,9 @@ bool emulate8080(state8080 *state, bool debug)
 
         if (jump) {
             jmp(state);
-            opbytes = 0;
+            pc_incr = 0;
         } else {
-            opbytes = 3;
+            pc_incr = 3;
         }
     }
 
@@ -454,9 +454,9 @@ bool emulate8080(state8080 *state, bool debug)
         if (jump) {
             push_sp(state, 3);
             jmp(state);
-            opbytes = 0;
+            pc_incr = 0;
         } else {
-            opbytes = 3;
+            pc_incr = 3;
         }
     }
 
@@ -498,7 +498,7 @@ bool emulate8080(state8080 *state, bool debug)
         case 0x01: // lxi b
             state->b = state->memory[state->pc + 2];
             state->c = state->memory[state->pc + 1];
-            opbytes = 3;
+            pc_incr = 3;
             break;
         case 0x02: // stax b
             {
@@ -537,7 +537,7 @@ bool emulate8080(state8080 *state, bool debug)
         case 0x11: // lxi d
             state->d = state->memory[state->pc + 2];
             state->e = state->memory[state->pc + 1];
-            opbytes = 3;
+            pc_incr = 3;
             break;
         case 0x12: // stax d
             {
@@ -576,7 +576,7 @@ bool emulate8080(state8080 *state, bool debug)
         case 0x21: // lxi h
             state->h = state->memory[state->pc + 2];
             state->l = state->memory[state->pc + 1];
-            opbytes = 3;
+            pc_incr = 3;
             break;
         // case 0x22: shld adr
         // case 0x23: inx h
@@ -651,7 +651,7 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xc2: jnz
         case 0xc3: // jmp
             jmp(state);
-            opbytes = 0;
+            pc_incr = 0;
             break;
         // case 0xc4: cnz
         // case 0xc5: push b
@@ -661,7 +661,7 @@ bool emulate8080(state8080 *state, bool debug)
         case 0xc9: // ret
             state->pc = (uint16_t) ((state->memory[state->sp + 1] << 8) + state->memory[state->sp]);
             state->sp += 2;
-            opbytes = 0;
+            pc_incr = 0;
             break;
         // case 0xca: jz
         // case 0xcb: nop
@@ -669,7 +669,7 @@ bool emulate8080(state8080 *state, bool debug)
         case 0xcd: // call
             push_sp(state, 3);
             jmp(state);
-            opbytes = 0;
+            pc_incr = 0;
             break;
         // case 0xce: aci
         // case 0xcf: rst 1
@@ -678,7 +678,7 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xd2: jnc
         case 0xd3: //out
             write_output(state->memory[state->pc + 1], state->a);
-            opbytes = 2;
+            pc_incr = 2;
             break;
         // case 0xd4: cnc
         // case 0xd5: push d
@@ -689,7 +689,7 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xda: jc
         case 0xdb: // in
             state->a = get_input(state->memory[state->pc + 1]);
-            opbytes = 2;
+            pc_incr = 2;
             break;
         // case 0xdc: cc
         // case 0xdd: nop
@@ -741,7 +741,7 @@ bool emulate8080(state8080 *state, bool debug)
             break;
     }
 
-    state->pc = state->pc + opbytes;
+    state->pc += pc_incr;
 
     if (debug) {
         print_state_post(state);
