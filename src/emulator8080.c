@@ -178,70 +178,83 @@ static void set_szp(state8080 *state, uint8_t result)
 
 static void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
 {
-    uint16_t buffer;
     switch (op_n) {
         case 0x00: // add (a <- a + source)
-            buffer = (uint16_t) (state->a + src_val);
-            state->a = (uint8_t) buffer;
-            state->cf.cy = buffer > 0xff;
-            set_szp(state, state->a);
-            break;
+            {
+                uint16_t buf = (uint16_t) (state->a + src_val);
+                state->a = (uint8_t) buf;
+                state->cf.cy = buf > 0xff;
+                set_szp(state, state->a);
+                break;
+            }
 
         case 0x01: // adc (a <- a + source + cy)
-            buffer = (uint16_t) (state->a + src_val + state->cf.cy);
-
-            state->a = (uint8_t) buffer;
-            state->cf.cy = buffer > 0xff;
-            set_szp(state, state->a);
-            break;
+            {
+                uint16_t buf = (uint16_t) (state->a + src_val + state->cf.cy);
+                state->a = (uint8_t) buf;
+                state->cf.cy = buf > 0xff;
+                set_szp(state, state->a);
+                break;
+            }
 
         case 0x02: // sub (a <- a - source)
-            buffer = state->a + (uint8_t) ~src_val + 0x01;
-
-            state->a = (uint8_t) buffer;
-            state->cf.cy = !(buffer > 0xff);
-            set_szp(state, state->a);
-            break;
+            {
+                uint16_t buf = state->a + (uint8_t) ~src_val + 0x01;
+                state->a = (uint8_t) buf;
+                // TODO: special case for 0, like sbb?
+                state->cf.cy = !(buf > 0xff);
+                set_szp(state, state->a);
+                break;
+            }
             
         case 0x03: // sbb (a <- a - source)
-            buffer = state->a + (uint8_t) (~(src_val + state->cf.cy) + 0x01);
+            {
+                uint16_t buf = state->a + (uint8_t) (~(src_val + state->cf.cy) + 0x01);
+                state->a = (uint8_t) buf;
 
-            state->a = (uint8_t) buffer;
-            if ((src_val + state->cf.cy) == 0) {
-                state->cf.cy = 0;
-            } else {
-                state->cf.cy = !(buffer > 0xff);
+                if ((src_val + state->cf.cy) == 0) {
+                    state->cf.cy = 0;
+                } else {
+                    state->cf.cy = !(buf > 0xff);
+                }
+
+                set_szp(state, state->a);
+                break;
             }
-            set_szp(state, state->a);
-            break;
 
         case 0x04: // ana (a <- a & source)
-            state->a = (uint8_t) (state->a & src_val);
-            state->cf.cy = false;
-            set_szp(state, state->a);
-            break;
+            {
+                state->a = (uint8_t) (state->a & src_val);
+                state->cf.cy = false;
+                set_szp(state, state->a);
+                break;
+            }
 
         case 0x05: // xra (a <- a ^ source)
-            state->a = (uint8_t) (state->a ^ src_val);
-            state->cf.cy = false;
-            set_szp(state, state->a);
-            break;
+            {
+                state->a = (uint8_t) (state->a ^ src_val);
+                state->cf.cy = false;
+                set_szp(state, state->a);
+                break;
+            }
 
         case 0x06: // ora (a <- a | source)
-            state->a = (uint8_t) (state->a | src_val);
-            state->cf.cy = false;
-            set_szp(state, state->a);
-            break;
+            {
+                state->a = (uint8_t) (state->a | src_val);
+                state->cf.cy = false;
+                set_szp(state, state->a);
+                break;
+            }
 
         case 0x07: // cmp (a < source)
             {
-                buffer = state->a + (uint8_t) (~src_val + 0x01);
+                uint16_t buf = state->a + (uint8_t) (~src_val + 0x01);
+                uint8_t result = (uint8_t) buf;
 
-                uint8_t result = (uint8_t) buffer;
                 if (src_val == 0) {
                     state->cf.cy = 0;
                 } else {
-                    state->cf.cy = !(buffer > 0xff);
+                    state->cf.cy = !(buf > 0xff);
                 }
 
                 set_szp(state, result);
@@ -253,8 +266,7 @@ static void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
 bool emulate8080(state8080 *state, bool debug)
 {
     unsigned char opcode = state->memory[state->pc];
-    uint8_t pc_incr = 1;
-    uint32_t buffer;
+    uint8_t pc_inr = 1;
     
     if (debug) {
         print_state_pre(state);
@@ -289,7 +301,7 @@ bool emulate8080(state8080 *state, bool debug)
         }
 
         *destination_pointer = state->memory[state->pc + 1];
-        pc_incr = 2;
+        pc_inr = 2;
     }
 
     // inr
@@ -301,8 +313,8 @@ bool emulate8080(state8080 *state, bool debug)
             return false;
         }
 
-        buffer = *destination_pointer + 1;
-        *destination_pointer = (uint8_t) buffer;
+        uint16_t buf = *destination_pointer + 1;
+        *destination_pointer = (uint8_t) buf;
         set_szp(state, *destination_pointer);
     }
     
@@ -315,8 +327,8 @@ bool emulate8080(state8080 *state, bool debug)
             return false;
         }
 
-        buffer = *destination_pointer - 1;
-        *destination_pointer = (uint8_t) buffer;
+        uint16_t buf = *destination_pointer - 1;
+        *destination_pointer = (uint8_t) buf;
         set_szp(state, *destination_pointer);
     }
 
@@ -335,7 +347,7 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t op_n = (opcode >> 3) & 0x07;
 
         do_arith_op(op_n, src_val, state);
-        pc_incr = 2;
+        pc_inr = 2;
     }
 
     // dad
@@ -345,13 +357,13 @@ bool emulate8080(state8080 *state, bool debug)
 
         lkp_reg_pr_sp(src_num, state, &hi, &lo);
 
-        uint32_t src = (uint32_t) ((*hi << 8) + *lo);
+        uint16_t src = (uint16_t) ((*hi << 8) + *lo);
+        uint32_t buf = (uint32_t) ((state->h << 8) + state->l) + src;
 
-        buffer = (uint32_t) ((state->h << 8) + state->l) + src;
-        state->h = (uint8_t) (buffer >> 8);
-        state->l = (uint8_t) buffer;
+        state->h = (uint8_t) (buf >> 8);
+        state->l = (uint8_t) buf;
 
-        state->cf.cy = buffer > 0xffff;
+        state->cf.cy = buf > 0xffff;
     }
 
     // lxi
@@ -419,7 +431,7 @@ bool emulate8080(state8080 *state, bool debug)
                 exit(1);
         }
 
-        pc_incr = 3;
+        pc_inr = 3;
     }
 
     // rnz/rz/rnc/rc/rpo/rpe/rp/rm
@@ -429,7 +441,7 @@ bool emulate8080(state8080 *state, bool debug)
 
         if (jump) {
             pop_sp(state);
-            pc_incr = 1;
+            pc_inr = 1;
         }
     }
     
@@ -440,9 +452,9 @@ bool emulate8080(state8080 *state, bool debug)
 
         if (jump) {
             jmp(state);
-            pc_incr = 0;
+            pc_inr = 0;
         } else {
-            pc_incr = 3;
+            pc_inr = 3;
         }
     }
 
@@ -454,9 +466,9 @@ bool emulate8080(state8080 *state, bool debug)
         if (jump) {
             push_sp(state, 3);
             jmp(state);
-            pc_incr = 0;
+            pc_inr = 0;
         } else {
-            pc_incr = 3;
+            pc_inr = 3;
         }
     }
 
@@ -474,8 +486,6 @@ bool emulate8080(state8080 *state, bool debug)
 
         *hi = state->memory[state->sp + 1];
         *lo = state->memory[state->sp];
-        printf("%02x\n", state->memory[state->sp]);
-        printf("%02x\n", state->memory[state->sp + 1]);
         state->sp += 2;
     }
     
@@ -487,19 +497,18 @@ bool emulate8080(state8080 *state, bool debug)
 
         state->memory[state->sp - 1] = *hi;
         state->memory[state->sp - 2] = *lo;
-        printf("%02x\n", state->memory[state->sp - 1]);
-        printf("%02x\n", state->memory[state->sp - 2]);
         state->sp -= 2;
     }
 
     switch (opcode) {
-        case 0x00: // nop
-            break;
+        // case 0x00: nop
         case 0x01: // lxi b
-            state->b = state->memory[state->pc + 2];
-            state->c = state->memory[state->pc + 1];
-            pc_incr = 3;
-            break;
+            {
+                state->b = state->memory[state->pc + 2];
+                state->c = state->memory[state->pc + 1];
+                pc_inr = 3;
+                break;
+            }
         case 0x02: // stax b
             {
                 uint16_t addr = (uint16_t) ((state->b << 8) + state->c);
@@ -512,10 +521,12 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0x05: dcr b
         // case 0x06: mvi b, d8
         case 0x07: // rlc
-            buffer = state->a >> 7;
-            state->a = (uint8_t) ((uint8_t) (state->a << 1) + buffer);
-            state->cf.cy = buffer != 0;
-            break;
+            {
+                uint16_t buf = state->a >> 7;
+                state->a = (uint8_t) ((uint8_t) (state->a << 1) + buf);
+                state->cf.cy = buf != 0;
+                break;
+            }
         // case 0x08: nop
         // case 0x09: dad b
         case 0x0a: // ldax b
@@ -529,16 +540,20 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0x0d: dcr c
         // case 0x0e: mvi c, d8
         case 0x0f: // rrc
-            buffer = (uint8_t) (state->a << 7);
-            state->a = (uint8_t) ((state->a >> 1) + buffer);
-            state->cf.cy = buffer != 0;
-            break;
+            {
+                uint8_t buf = (uint8_t) (state->a << 7);
+                state->a = (uint8_t) ((state->a >> 1) + buf);
+                state->cf.cy = buf != 0;
+                break;
+            }
         // case 0x10: nop
         case 0x11: // lxi d
-            state->d = state->memory[state->pc + 2];
-            state->e = state->memory[state->pc + 1];
-            pc_incr = 3;
-            break;
+            {
+                state->d = state->memory[state->pc + 2];
+                state->e = state->memory[state->pc + 1];
+                pc_inr = 3;
+                break;
+            }
         case 0x12: // stax d
             {
                 uint16_t addr = (uint16_t) ((state->d << 8) + state->e);
@@ -551,10 +566,12 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0x15: dcr d
         // case 0x16: mvi d, d8
         case 0x17: // ral
-            buffer = state->a >> 7;
-            state->a = (uint8_t) ((uint8_t) (state->a << 1) + state->cf.cy);
-            state->cf.cy = buffer != 0;
-            break;
+            {
+                uint8_t buf = state->a >> 7 != 0;
+                state->a = (uint8_t) ((uint8_t) (state->a << 1) + state->cf.cy);
+                state->cf.cy = buf;
+                break;
+            }
         // case 0x18: nop
         // case 0x19: dad d
         case 0x1a: // ldax d
@@ -568,16 +585,20 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0x1d: dcr e
         // case 0x1e: mvi e, d8
         case 0x1f: // rar
-            buffer = state->a & 0x01;
-            state->a = (uint8_t) ((state->a >> 1) + (state->cf.cy << 7));
-            state->cf.cy = (uint8_t) buffer;
-            break;
+            {
+                uint8_t buf = (uint8_t) (state->a & 0x01);
+                state->a = (uint8_t) ((state->a >> 1) + (state->cf.cy << 7));
+                state->cf.cy = buf;
+                break;
+            }
         // case 0x20: nop
         case 0x21: // lxi h
-            state->h = state->memory[state->pc + 2];
-            state->l = state->memory[state->pc + 1];
-            pc_incr = 3;
-            break;
+            {
+                state->h = state->memory[state->pc + 2];
+                state->l = state->memory[state->pc + 1];
+                pc_inr = 3;
+                break;
+            }
         // case 0x22: shld adr
         // case 0x23: inx h
         // case 0x24: inr h
@@ -585,25 +606,24 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0x26: mvi h, d8
         case 0x27: // daa
             {
-                uint8_t b_l = (uint8_t) state->a & 0x0f;
-                uint8_t b_h = (uint8_t) ((state->a & 0xf0) >> 4);
+                uint8_t lo = (uint8_t) state->a & 0x0f;
+                uint8_t hi = (uint8_t) ((state->a & 0xf0) >> 4);
 
-                if (state->cf.ac || b_l > 0x09) {
-                    b_l += 0x06;
-                    printf("b_l: %u\n", b_l);
-                    //state->cf.ac = b_l > 0x0f;
+                if (state->cf.ac || lo > 0x09) {
+                    lo += 0x06;
+                    state->cf.ac = lo > 0x0f;
                 } else {
-                    //state->cf.ac = 0;
+                    state->cf.ac = 0;
                 }
 
-                if (state->cf.cy || b_h > 0x09) {
-                    b_h += 0x06;
-                    state->cf.cy = b_h > 0x0f;
+                if (state->cf.cy || hi > 0x09) {
+                    hi += 0x06;
+                    state->cf.cy = hi > 0x0f;
                 } else {
                     state->cf.cy = 0;
                 }
 
-                state->a = (uint8_t) ((b_h << 4) + b_l);
+                state->a = (uint8_t) ((hi << 4) + lo);
                 set_szp(state, state->a);
             }
             break;
@@ -615,8 +635,10 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0x2d: dcr l
         // case 0x2e: mvi l, d8
         case 0x2f: // cma
-            state->a = ~state->a;
-            break;
+            {
+                state->a = ~state->a;
+                break;
+            }
         // case 0x30: nop
         // case 0x31: lxi sp
         // case 0x32: sta adr
@@ -625,8 +647,10 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0x35: dcr m
         // case 0x36: mvi m, d8
         case 0x37: // stc
-            state->cf.cy = 1;
-            break;
+            {
+                state->cf.cy = 1;
+                break;
+            }
         // case 0x38: nop
         // case 0x39: dad sp
         // case 0x3a: lda adr
@@ -635,8 +659,10 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0x3d: dcr a
         // case 0x3e: mvi a, d8
         case 0x3f: // cmc
-            state->cf.cy = !state->cf.cy;
-            break;
+            {
+                state->cf.cy = !state->cf.cy;
+                break;
+            }
         // 0x40 - 0x7f mov
         // 0x80 - 0x87 add
         // 0x88 - 0x8f adc
@@ -650,36 +676,44 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xc1: pop b
         // case 0xc2: jnz
         case 0xc3: // jmp
-            jmp(state);
-            pc_incr = 0;
-            break;
+            {
+                jmp(state);
+                pc_inr = 0;
+                break;
+            }
         // case 0xc4: cnz
         // case 0xc5: push b
         // case 0xc6: adi
         // case 0xc7: rst 0
         // case 0xc8: rz
         case 0xc9: // ret
-            state->pc = (uint16_t) ((state->memory[state->sp + 1] << 8) + state->memory[state->sp]);
-            state->sp += 2;
-            pc_incr = 0;
-            break;
+            {
+                state->pc = (uint16_t) ((state->memory[state->sp + 1] << 8) + state->memory[state->sp]);
+                state->sp += 2;
+                pc_inr = 0;
+                break;
+            }
         // case 0xca: jz
         // case 0xcb: nop
         // case 0xcc: cz
         case 0xcd: // call
-            push_sp(state, 3);
-            jmp(state);
-            pc_incr = 0;
-            break;
+            {
+                push_sp(state, 3);
+                jmp(state);
+                pc_inr = 0;
+                break;
+            }
         // case 0xce: aci
         // case 0xcf: rst 1
         // case 0xd0: rnc
         // case 0xd1: pop d
         // case 0xd2: jnc
         case 0xd3: //out
-            write_output(state->memory[state->pc + 1], state->a);
-            pc_incr = 2;
-            break;
+            {
+                write_output(state->memory[state->pc + 1], state->a);
+                pc_inr = 2;
+                break;
+            }
         // case 0xd4: cnc
         // case 0xd5: push d
         // case 0xd6: sui
@@ -688,9 +722,11 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xd9: nop
         // case 0xda: jc
         case 0xdb: // in
-            state->a = get_input(state->memory[state->pc + 1]);
-            pc_incr = 2;
-            break;
+            {
+                state->a = get_input(state->memory[state->pc + 1]);
+                pc_inr = 2;
+                break;
+            }
         // case 0xdc: cc
         // case 0xdd: nop
         // case 0xde: sbi
@@ -698,23 +734,25 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xe0: rpo
         // case 0xe1: pop h
         // case 0xe2: jpo
-        // TODO: 0xe3: XTHL
+        // TODO: 0xe3: xthl
         // case 0xe4: cpo
         // case 0xe5: push h
         // case 0xe6: ani
         // case 0xe7: rst 4
         // case 0xe8: rpe
-        // TODO: 0xe9: PCHL
+        // TODO: 0xe9: pchl
         // case 0xea: jpe
         case 0xeb: // xchg
-            state->h ^= state->d;
-            state->d ^= state->h;
-            state->h ^= state->d;
+            {
+                state->h ^= state->d;
+                state->d ^= state->h;
+                state->h ^= state->d;
 
-            state->l ^= state->e;
-            state->e ^= state->l;
-            state->l ^= state->e;
-            break;
+                state->l ^= state->e;
+                state->e ^= state->l;
+                state->l ^= state->e;
+                break;
+            }
         // case 0xec: cpe
         // case 0xed: nop
         // case 0xee: xri
@@ -728,20 +766,16 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xf6: ori
         // case 0xf7: rst 6
         // case 0xf8: rm
-        // TODO: 0xf9: SPHL
+        // TODO: 0xf9: sphl
         // case 0xfa: jm
         // TODO: 0xfb: ei
         // case 0xfc: cm
         // case 0xfd: nop
         // case 0xfe: cpi
         // case 0xff: rst 7
-    
-        default:
-            //unimplemented_instruction(state);
-            break;
     }
 
-    state->pc += pc_incr;
+    state->pc += pc_inr;
 
     if (debug) {
         print_state_post(state);
