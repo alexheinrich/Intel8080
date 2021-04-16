@@ -607,24 +607,20 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0x26: mvi h, d8
         case 0x27: // daa
             {
-                uint8_t lo = (uint8_t) state->a & 0x0f;
-                uint8_t hi = (uint8_t) ((state->a & 0xf0) >> 4);
+                uint8_t lo = (uint8_t) (state->a & 0x0f);
 
                 if (state->cf.ac || lo > 0x09) {
-                    lo += 0x06;
-                    state->cf.ac = lo > 0x0f;
-                } else {
-                    state->cf.ac = 0;
-                }
+                    state->a += 0x06;
+                    state->cf.ac = (state->a & 0x0f) < lo;
+                } 
+
+                uint8_t hi = (uint8_t) (state->a & 0xf0);
 
                 if (state->cf.cy || hi > 0x09) {
-                    hi += 0x06;
-                    state->cf.cy = hi > 0x0f;
-                } else {
-                    state->cf.cy = 0;
+                    state->a += 0x60;
+                    state->cf.cy = (state->a & 0xf0) < hi;
                 }
 
-                state->a = (uint8_t) ((hi << 4) + lo);
                 set_szp(state, state->a);
             }
             break;
