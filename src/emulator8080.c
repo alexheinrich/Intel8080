@@ -75,7 +75,7 @@ static uint8_t *get_reg(uint8_t src_num, state8080 *state)
 
 }
 
-static void get_regp(uint8_t **hi, uint8_t **lo, uint8_t src_num, state8080 *state)
+static void get_reg_pr(uint8_t **hi, uint8_t **lo, uint8_t src_num, state8080 *state)
 {
     switch(src_num) {
         case 0x00:
@@ -96,23 +96,23 @@ static void get_regp(uint8_t **hi, uint8_t **lo, uint8_t src_num, state8080 *sta
     }
 }
 
-static void get_regp_sp(uint8_t **hi, uint8_t **lo, uint8_t src_num, state8080 *state)
+static void get_reg_pr_sp(uint8_t **hi, uint8_t **lo, uint8_t src_num, state8080 *state)
 {
     if (src_num == 0x03) {
         *lo = (uint8_t *) &state->sp;
         *hi = *lo + 1;
     } else {
-        get_regp(hi, lo, src_num, state);
+        get_reg_pr(hi, lo, src_num, state);
     }
 }
 
-static void get_regp_psw(uint8_t **hi, uint8_t **lo, uint8_t src_num, state8080 *state)
+static void get_reg_pr_psw(uint8_t **hi, uint8_t **lo, uint8_t src_num, state8080 *state)
 {
     if (src_num == 0x03) {
         *hi = &state->a;
         *lo = (uint8_t *) &state->cf;
     } else {
-        get_regp(hi, lo, src_num, state);
+        get_reg_pr(hi, lo, src_num, state);
     }
 }
 
@@ -356,7 +356,7 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t *hi, *lo;
         uint8_t src_num = (uint8_t) ((opcode & 0x30) >> 4);
 
-        get_regp_sp(&hi, &lo, src_num, state);
+        get_reg_pr_sp(&hi, &lo, src_num, state);
 
         uint16_t src = (uint16_t) ((*hi << 8) + *lo);
         uint32_t buf = (uint32_t) ((state->h << 8) + state->l) + src;
@@ -372,7 +372,7 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t *hi, *lo; 
         uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
 
-        get_regp_sp(&hi, &lo, src, state);
+        get_reg_pr_sp(&hi, &lo, src, state);
 
         *hi = state->memory[state->pc + 2];
         *lo = state->memory[state->pc + 1];
@@ -386,7 +386,7 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t *hi, *lo; 
         uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
 
-        get_regp_sp(&hi, &lo, src, state);
+        get_reg_pr_sp(&hi, &lo, src, state);
         
         uint16_t buf = *lo + 1;
         *lo = (uint8_t) buf;
@@ -398,7 +398,7 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t *hi, *lo; 
         uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
 
-        get_regp_sp(&hi, &lo, src, state);
+        get_reg_pr_sp(&hi, &lo, src, state);
 
         uint16_t buf = *lo - 1;
         *lo = (uint8_t) buf;
@@ -483,7 +483,7 @@ bool emulate8080(state8080 *state, bool debug)
     if ((opcode & 0xcf) == 0xc1) {
         uint8_t src = (uint8_t) ((opcode >> 4) & 0x03);
         uint8_t *hi, *lo;
-        get_regp_psw(&hi, &lo, src, state);
+        get_reg_pr_psw(&hi, &lo, src, state);
 
         *hi = state->memory[state->sp + 1];
         *lo = state->memory[state->sp];
@@ -494,7 +494,7 @@ bool emulate8080(state8080 *state, bool debug)
     if ((opcode & 0xcf) == 0xc5) {
         uint8_t dst = (uint8_t) ((opcode >> 4) & 0x03);
         uint8_t *hi, *lo;
-        get_regp_psw(&hi, &lo, dst, state);
+        get_reg_pr_psw(&hi, &lo, dst, state);
 
         state->memory[state->sp - 1] = *hi;
         state->memory[state->sp - 2] = *lo;
