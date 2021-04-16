@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static uint8_t get_input(uint8_t port)
+static uint8_t get_in(uint8_t port)
 {
     switch (port) {
         case 0x03:
@@ -21,11 +21,11 @@ static uint8_t get_input(uint8_t port)
     }
 }
 
-static void write_output(uint8_t port, uint8_t val)
+static void wr_out(uint8_t port, uint8_t val)
 {
     switch (port) {
         case 0x02: 
-            printf("set shit by val! %u\n\n\n", val);
+            printf("set shift by val! %u\n\n\n", val);
             sreg_set_shift(val);
             break;
         case 0x04:
@@ -37,18 +37,18 @@ static void write_output(uint8_t port, uint8_t val)
     }
 }
 
-static bool is_even_parity(uint8_t number)
+static bool par_even(uint8_t num)
 {
-    uint32_t t1 = number ^ (number >> 4);
+    uint32_t t1 = num ^ (num >> 4);
     uint32_t t2 = t1 ^ (t1 >> 2);
     uint32_t t3 = t2 ^ (t2 >> 1);
 
     return !(t3 & 0x01);
 }
 
-static uint8_t *lkp_reg(uint8_t register_number, state8080 *state)
+static uint8_t *get_reg(uint8_t src_num, state8080 *state)
 {
-    switch (register_number) {
+    switch (src_num) {
         case 0:
             return &state->b;
         case 1:
@@ -63,8 +63,8 @@ static uint8_t *lkp_reg(uint8_t register_number, state8080 *state)
             return &state->l;
         case 6: 
             {
-                uint16_t address = (uint16_t) ((state->h << 8) + state->l);
-                return &state->memory[address];
+                uint16_t addr = (uint16_t) ((state->h << 8) + state->l);
+                return &state->memory[addr];
             }
         case 7:
             return &state->a;
@@ -75,9 +75,9 @@ static uint8_t *lkp_reg(uint8_t register_number, state8080 *state)
 
 }
 
-static void lkp_reg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
+static void get_regp(uint8_t **hi, uint8_t **lo, uint8_t src_num, state8080 *state)
 {
-    switch(src_n) {
+    switch(src_num) {
         case 0x00:
             *hi = &state->b;
             *lo = &state->c;
@@ -90,37 +90,35 @@ static void lkp_reg_pr(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **
             *hi = &state->h;
             *lo = &state->l;
             break;
-
         default:
-            fprintf(stderr, "Unkown source: %02x lkp_reg_pr\n", src_n);
+            fprintf(stderr, "Unkown source: %02x get_regp\n", src_num);
             exit(1);
     }
 }
 
-static void lkp_reg_pr_sp(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
+static void get_regp_sp(uint8_t **hi, uint8_t **lo, uint8_t src_num, state8080 *state)
 {
-    if (src_n == 0x03) {
+    if (src_num == 0x03) {
         *lo = (uint8_t *) &state->sp;
         *hi = *lo + 1;
     } else {
-        lkp_reg_pr(src_n, state, hi, lo);
+        get_regp(hi, lo, src_num, state);
     }
 }
 
-static void lkp_reg_pr_psw(uint8_t src_n, state8080 *state, uint8_t **hi, uint8_t **lo)
+static void get_regp_psw(uint8_t **hi, uint8_t **lo, uint8_t src_num, state8080 *state)
 {
-    if (src_n == 0x03) {
+    if (src_num == 0x03) {
         *hi = &state->a;
         *lo = (uint8_t *) &state->cf;
     } else {
-        lkp_reg_pr(src_n, state, hi, lo);
+        get_regp(hi, lo, src_num, state);
     }
 }
 
 static void jmp(state8080 *state)
 {
     state->pc = (uint16_t) ((state->memory[state->pc + 2] << 8) + state->memory[state->pc + 1]);
-    printf("jump dst: %04x\n", state->pc);
 }
 
 static void pop_sp(state8080 *state)
@@ -137,7 +135,7 @@ static void push_sp(state8080 *state, uint8_t opbytes)
     state->sp -= 2;
 }
 
-static bool check_cf_con(uint8_t con, state8080 *state)
+static bool check_cf(uint8_t con, state8080 *state)
 {
     switch (con) {
         case 0x00: // ?nz
@@ -164,6 +162,9 @@ static bool check_cf_con(uint8_t con, state8080 *state)
         case 0x07: // ?m
             if (state->cf.s) return true;
             break;
+        default:
+            fprintf(stderr, "Unkown source: %02x check_cf\n", con);
+            exit(1);
     }
 
     return false;
@@ -173,12 +174,12 @@ static void set_szp(state8080 *state, uint8_t result)
 {
     state->cf.s = (result & 0x80) == 0x80;
     state->cf.z = result == 0x00;
-    state->cf.p = is_even_parity(result);
+    state->cf.p = par_even(result);
 }
 
-static void do_arith_op(uint8_t op_n, uint8_t src_val , state8080 *state)
+static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
 {
-    switch (op_n) {
+    switch (op_num) {
         case 0x00: // add (a <- a + source)
             {
                 uint16_t buf = (uint16_t) (state->a + src_val);
@@ -274,79 +275,79 @@ bool emulate8080(state8080 *state, bool debug)
 
     // mov (and hlt)
     if ((opcode & 0xc0) == 0x40) {
-        uint8_t source = opcode & 0x07;
-        uint8_t source_value = *lkp_reg(source, state);
-        uint8_t destination = (opcode >> 3) & 0x07;
-        uint8_t *destination_pointer = lkp_reg(destination, state);
+        uint8_t src = opcode & 0x07;
+        uint8_t src_val = *get_reg(src, state);
+        uint8_t dst = (opcode >> 3) & 0x07;
+        uint8_t *dst_p = get_reg(dst, state);
 
-        if (destination_pointer == NULL) {
+        if (dst_p == NULL) {
             return false;
         }
 
         // hlt
-        if (source == 0x06 && destination == 0x06) {
+        if (src == 0x06 && dst == 0x06) {
             return false;
         }
 
-        *destination_pointer = source_value;
+        *dst_p = src_val;
     }
 
     // mvi (destination <- source)
     if ((opcode & 0xc7) == 0x06) {
-        uint8_t destination = (opcode >> 3) & 0x07;
-        uint8_t *destination_pointer = lkp_reg(destination, state);
+        uint8_t dst = (opcode >> 3) & 0x07;
+        uint8_t *dst_p = get_reg(dst, state);
 
-        if (destination_pointer == NULL) {
+        if (dst_p == NULL) {
             return false;
         }
 
-        *destination_pointer = state->memory[state->pc + 1];
+        *dst_p = state->memory[state->pc + 1];
         pc_inr = 2;
     }
 
     // inr
     if ((opcode & 0xc7) == 0x04) {
-        uint8_t destination = opcode >> 3 & 0x07;
-        uint8_t *destination_pointer = lkp_reg(destination, state);
+        uint8_t dst = opcode >> 3 & 0x07;
+        uint8_t *dst_p = get_reg(dst, state);
         
-        if (destination_pointer == NULL) {
+        if (dst_p == NULL) {
             return false;
         }
 
-        uint16_t buf = *destination_pointer + 1;
-        *destination_pointer = (uint8_t) buf;
-        set_szp(state, *destination_pointer);
+        uint16_t buf = *dst_p + 1;
+        *dst_p = (uint8_t) buf;
+        set_szp(state, *dst_p);
     }
     
     // dcr
     if ((opcode & 0xc7) == 0x05) {
-        uint8_t destination = opcode >> 3 & 0x07;
-        uint8_t *destination_pointer = lkp_reg(destination, state);
+        uint8_t dst = opcode >> 3 & 0x07;
+        uint8_t *dst_p = get_reg(dst, state);
         
-        if (destination_pointer == NULL) {
+        if (dst_p == NULL) {
             return false;
         }
 
-        uint16_t buf = *destination_pointer - 1;
-        *destination_pointer = (uint8_t) buf;
-        set_szp(state, *destination_pointer);
+        uint16_t buf = *dst_p - 1;
+        *dst_p = (uint8_t) buf;
+        set_szp(state, *dst_p);
     }
 
     // add/adc/sub/sbb/ana/xra/ora/cmp
     if ((opcode & 0xc0) == 0x80) {
         uint8_t src_reg = opcode & 0x07;
-        uint8_t src_val = *lkp_reg(src_reg, state);
-        uint8_t op_n = (opcode >> 3) & 0x07;
+        uint8_t src_val = *get_reg(src_reg, state);
+        uint8_t op_num = (opcode >> 3) & 0x07;
 
-        do_arith_op(op_n, src_val, state);
+        do_arith_op(op_num, src_val, state);
     }
 
     // adi/aci/sui/sbi/ani/xri/ori/cpi
     if ((opcode & 0xc7) == 0xc6) {
         uint8_t src_val = state->memory[state->pc + 1];
-        uint8_t op_n = (opcode >> 3) & 0x07;
+        uint8_t op_num = (opcode >> 3) & 0x07;
 
-        do_arith_op(op_n, src_val, state);
+        do_arith_op(op_num, src_val, state);
         pc_inr = 2;
     }
 
@@ -355,7 +356,7 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t *hi, *lo;
         uint8_t src_num = (uint8_t) ((opcode & 0x30) >> 4);
 
-        lkp_reg_pr_sp(src_num, state, &hi, &lo);
+        get_regp_sp(&hi, &lo, src_num, state);
 
         uint16_t src = (uint16_t) ((*hi << 8) + *lo);
         uint32_t buf = (uint32_t) ((state->h << 8) + state->l) + src;
@@ -371,7 +372,7 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t *hi, *lo; 
         uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
 
-        lkp_reg_pr_sp(src, state, &hi, &lo);
+        get_regp_sp(&hi, &lo, src, state);
 
         *hi = state->memory[state->pc + 2];
         *lo = state->memory[state->pc + 1];
@@ -385,7 +386,7 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t *hi, *lo; 
         uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
 
-        lkp_reg_pr_sp(src, state, &hi, &lo);
+        get_regp_sp(&hi, &lo, src, state);
         
         uint16_t buf = *lo + 1;
         *lo = (uint8_t) buf;
@@ -397,7 +398,7 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t *hi, *lo; 
         uint8_t src = (uint8_t) ((opcode & 0x30) >> 4);
 
-        lkp_reg_pr_sp(src, state, &hi, &lo);
+        get_regp_sp(&hi, &lo, src, state);
 
         uint16_t buf = *lo - 1;
         *lo = (uint8_t) buf;
@@ -406,12 +407,12 @@ bool emulate8080(state8080 *state, bool debug)
 
     // sta/lda/shld/lhld
     if ((opcode & 0xe7) == 0x22) {
-        uint8_t op_n = (opcode >> 3) & 0x03;
+        uint8_t op_num = (opcode >> 3) & 0x03;
         uint8_t hi = state->memory[state->pc + 2];
         uint8_t lo = state->memory[state->pc + 1];
         uint16_t addr = (uint16_t) ((hi << 8) + lo);
 
-        switch (op_n) {
+        switch (op_num) {
             case 0x00: // shld
                 state->memory[addr + 1] = state->h;
                 state->memory[addr] = state->l;
@@ -427,7 +428,7 @@ bool emulate8080(state8080 *state, bool debug)
                 state->a = state->memory[addr];
                 break;
             default:
-                fprintf(stderr, "Invalid op_n: %02x sta/lda/shld/lhld\n", op_n);
+                fprintf(stderr, "Invalid op_num: %02x sta/lda/shld/lhld\n", op_num);
                 exit(1);
         }
 
@@ -437,7 +438,7 @@ bool emulate8080(state8080 *state, bool debug)
     // rnz/rz/rnc/rc/rpo/rpe/rp/rm
     if ((opcode & 0xc7) == 0xc0) {
         uint8_t n = (opcode >> 3) & 0x07;
-        bool jump = check_cf_con(n, state);
+        bool jump = check_cf(n, state);
 
         if (jump) {
             pop_sp(state);
@@ -448,7 +449,7 @@ bool emulate8080(state8080 *state, bool debug)
     // jnz/jz/jnc/jc/jpo/jpe/jp/jm
     if ((opcode & 0xc7) == 0xc2) {
         uint8_t n = (opcode >> 3) & 0x07;
-        bool jump = check_cf_con(n, state);
+        bool jump = check_cf(n, state);
 
         if (jump) {
             jmp(state);
@@ -461,7 +462,7 @@ bool emulate8080(state8080 *state, bool debug)
     // cnz/cz/cnc/cc/cpo/cpe/cp/cm
     if ((opcode & 0xc7) == 0xc4) {
         uint8_t n = (opcode >> 3) & 0x07;
-        bool jump = check_cf_con(n, state);
+        bool jump = check_cf(n, state);
 
         if (jump) {
             push_sp(state, 3);
@@ -482,7 +483,7 @@ bool emulate8080(state8080 *state, bool debug)
     if ((opcode & 0xcf) == 0xc1) {
         uint8_t src = (uint8_t) ((opcode >> 4) & 0x03);
         uint8_t *hi, *lo;
-        lkp_reg_pr_psw(src, state, &hi, &lo);
+        get_regp_psw(&hi, &lo, src, state);
 
         *hi = state->memory[state->sp + 1];
         *lo = state->memory[state->sp];
@@ -493,7 +494,7 @@ bool emulate8080(state8080 *state, bool debug)
     if ((opcode & 0xcf) == 0xc5) {
         uint8_t dst = (uint8_t) ((opcode >> 4) & 0x03);
         uint8_t *hi, *lo;
-        lkp_reg_pr_psw(dst, state, &hi, &lo);
+        get_regp_psw(&hi, &lo, dst, state);
 
         state->memory[state->sp - 1] = *hi;
         state->memory[state->sp - 2] = *lo;
@@ -710,7 +711,7 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xd2: jnc
         case 0xd3: //out
             {
-                write_output(state->memory[state->pc + 1], state->a);
+                wr_out(state->memory[state->pc + 1], state->a);
                 pc_inr = 2;
                 break;
             }
@@ -723,7 +724,7 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xda: jc
         case 0xdb: // in
             {
-                state->a = get_input(state->memory[state->pc + 1]);
+                state->a = get_in(state->memory[state->pc + 1]);
                 pc_inr = 2;
                 break;
             }
