@@ -485,9 +485,8 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t *hi, *lo;
         get_reg_pr_psw(&hi, &lo, src, state);
 
-        *hi = state->memory[state->sp + 1];
-        *lo = state->memory[state->sp];
-        state->sp += 2;
+        *lo = state->memory[state->sp++];
+        *hi = state->memory[state->sp++];
     }
     
     // push
@@ -496,9 +495,8 @@ bool emulate8080(state8080 *state, bool debug)
         uint8_t *hi, *lo;
         get_reg_pr_psw(&hi, &lo, dst, state);
 
-        state->memory[state->sp - 1] = *hi;
-        state->memory[state->sp - 2] = *lo;
-        state->sp -= 2;
+        state->memory[--state->sp] = *hi;
+        state->memory[--state->sp] = *lo;
     }
 
     switch (opcode) {
@@ -685,8 +683,8 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xc8: rz
         case 0xc9: // ret
             {
-                state->pc = (uint16_t) ((state->memory[state->sp + 1] << 8) + state->memory[state->sp]);
-                state->sp += 2;
+                state->pc = state->memory[state->sp++];
+                state->pc |= state->memory[state->sp++] << 8;
                 pc_inr = 0;
                 break;
             }
