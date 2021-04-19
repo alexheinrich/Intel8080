@@ -216,10 +216,11 @@ bool exec_test_case(FILE *f)
 
     uint8_t opbytes[3];
     state8080 state;
+
     for (uint32_t i = 0; i < 5; ++i) {
         if (getline(&line_p, &n, f) == -1) {
-            success = false;
-            break;
+            free(line_p);
+            return false;
         }
 
         printf("%s", line_p); 
