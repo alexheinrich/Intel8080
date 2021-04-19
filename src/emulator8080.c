@@ -182,42 +182,40 @@ static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
     switch (op_num) {
         case 0x00: // add (a <- a + source)
             {
-                uint16_t buf = (uint16_t) (state->a + src_val);
-                state->a = (uint8_t) buf;
-                state->cf.cy = buf > 0xff;
+                state->a += src_val;
+                state->cf.cy = state->a < src_val;
                 set_szp(state, state->a);
                 break;
             }
 
         case 0x01: // adc (a <- a + source + cy)
             {
-                uint16_t buf = (uint16_t) (state->a + src_val + state->cf.cy);
-                state->a = (uint8_t) buf;
-                state->cf.cy = buf > 0xff;
+                uint16_t buf = (uint16_t) (src_val + state->cf.cy);
+                state->a += (uint8_t) buf;
+                state->cf.cy = state->a < buf;
                 set_szp(state, state->a);
                 break;
             }
 
         case 0x02: // sub (a <- a - source)
             {
-                uint16_t buf = state->a + (uint8_t) ~src_val + 0x01;
-                state->a = (uint8_t) buf;
-                // TODO: special case for 0, like sbb?
-                state->cf.cy = !(buf > 0xff);
+                uint8_t buf = (uint8_t) (~src_val + 0x01);
+                state->a += buf;
+                // TODO:  
+                state->cf.cy = !(src_val == 0 || state->a < buf);
                 set_szp(state, state->a);
                 break;
             }
             
         case 0x03: // sbb (a <- a - source)
             {
-                uint16_t buf = state->a + (uint8_t) (~(src_val + state->cf.cy) + 0x01);
-                state->a = (uint8_t) buf;
+                printf("src_val: %02x\n", src_val);
+                uint8_t buf = (uint8_t) (~(src_val + state->cf.cy) + 0x01);
+                printf("buf: %02x\n", buf);
+                state->a += (uint8_t) buf;
+                printf("state < buf: %02x\n", state->a < buf);
 
-                if ((src_val + state->cf.cy) == 0) {
-                    state->cf.cy = 0;
-                } else {
-                    state->cf.cy = !(buf > 0xff);
-                }
+                state->cf.cy = !((src_val == 0 && state->cf.cy == 0) || state->a < buf);
 
                 set_szp(state, state->a);
                 break;
@@ -226,7 +224,7 @@ static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
         case 0x04: // ana (a <- a & source)
             {
                 state->a = (uint8_t) (state->a & src_val);
-                state->cf.cy = false;
+                state->cf.cy = 0;
                 set_szp(state, state->a);
                 break;
             }
@@ -234,7 +232,7 @@ static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
         case 0x05: // xra (a <- a ^ source)
             {
                 state->a = (uint8_t) (state->a ^ src_val);
-                state->cf.cy = false;
+                state->cf.cy = 0;
                 set_szp(state, state->a);
                 break;
             }
@@ -242,21 +240,17 @@ static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
         case 0x06: // ora (a <- a | source)
             {
                 state->a = (uint8_t) (state->a | src_val);
-                state->cf.cy = false;
+                state->cf.cy = 0;
                 set_szp(state, state->a);
                 break;
             }
 
         case 0x07: // cmp (a < source)
             {
-                uint16_t buf = state->a + (uint8_t) (~src_val + 0x01);
-                uint8_t result = (uint8_t) buf;
+                uint16_t buf = (uint16_t) ((uint8_t) ~src_val + 0x01);
+                uint8_t result = (uint8_t) (state->a + (uint8_t) buf);
 
-                if (src_val == 0) {
-                    state->cf.cy = 0;
-                } else {
-                    state->cf.cy = !(buf > 0xff);
-                }
+                state->cf.cy = !(result < buf);
 
                 set_szp(state, result);
                 break;
