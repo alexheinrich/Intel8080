@@ -8,9 +8,9 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static void usage(void)
@@ -63,13 +63,7 @@ int32_t main(int32_t argc, char *argv[])
             return 1;
         }
         
-        int n = 0;
-        printf("cycle: %d\n", n);
-        while (emulate8080(&state, true)) {
-            n++;
-            printf("cycle: %d\n", n);
-            if (n > 100000) break;
-        }
+        run_emulator(&state);
 
         unload_rom(&state);
     }

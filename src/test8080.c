@@ -232,7 +232,7 @@ bool exec_test_case(FILE *f)
             get_op(word_p, opbytes);
         } else if (strcmp(head, "pre") == 0) {
             init_state_mem(&state, opbytes, word_p);
-            emulate8080(&state, false);
+            emulate_op8080(&state, false);
         } else if (strcmp(head, "post") == 0) {
             state8080 target_state;
             parse_state(&target_state, word_p);

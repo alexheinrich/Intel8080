@@ -3,12 +3,14 @@
 #include "shift_register.h"
 
 #include <errno.h>
+#include <SDL2/SDL.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 static uint8_t get_in(uint8_t port)
 {
@@ -121,13 +123,13 @@ static void jmp(state8080 *state)
     state->pc = (uint16_t) ((state->memory[state->pc + 2] << 8) + state->memory[state->pc + 1]);
 }
 
-static void pop_sp(state8080 *state)
+static void pop_pc(state8080 *state)
 {
     state->pc = (uint16_t) (state->memory[state->sp + 1] << 8) + state->memory[state->sp];
     state->sp += 2;
 }
 
-static void push_sp(state8080 *state, uint8_t opbytes)
+static void push_pc(state8080 *state, uint8_t opbytes)
 {
     uint16_t pc = (uint16_t) (state->pc + opbytes);
     state->memory[state->sp - 1] = (uint8_t) (pc >> 8);
@@ -258,7 +260,7 @@ static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
     }
 }
 
-bool emulate8080(state8080 *state, bool debug)
+bool emulate_op8080(state8080 *state, bool debug)
 {
     unsigned char opcode = state->memory[state->pc];
     uint8_t pc_inr = 1;
@@ -435,7 +437,7 @@ bool emulate8080(state8080 *state, bool debug)
         bool jump = check_cf(n, state);
 
         if (jump) {
-            pop_sp(state);
+            pop_pc(state);
             pc_inr = 1;
         }
     }
@@ -459,7 +461,7 @@ bool emulate8080(state8080 *state, bool debug)
         bool jump = check_cf(n, state);
 
         if (jump) {
-            push_sp(state, 3);
+            push_pc(state, 3);
             jmp(state);
             pc_inr = 0;
         } else {
@@ -469,7 +471,7 @@ bool emulate8080(state8080 *state, bool debug)
 
     // rst 0-7
     if ((opcode & 0xc7) == 0xc7) {
-        push_sp(state, 1);
+        push_pc(state, 1);
         state->pc = (uint16_t) (opcode & 0x38);
     }
 
@@ -506,7 +508,6 @@ bool emulate8080(state8080 *state, bool debug)
             {
                 uint16_t addr = (uint16_t) ((state->b << 8) + state->c);
                 state->memory[addr] = state->a;
-                printf("stax b: %02x\n", state->memory[addr]);
                 break;
             }
         // case 0x03: inx b
@@ -687,7 +688,7 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xcc: cz
         case 0xcd: // call
             {
-                push_sp(state, 3);
+                push_pc(state, 3);
                 jmp(state);
                 pc_inr = 0;
                 break;
@@ -750,6 +751,9 @@ bool emulate8080(state8080 *state, bool debug)
         // case 0xf1: pop psw
         // case 0xf2: jpe
         // TODO: 0xf3: di
+        case 0xf3:
+            state->interrupts_enabled = 0;
+            break;
         // case 0xf4: cp
         // case 0xf5: push psw
         // case 0xf6: ori
@@ -758,6 +762,9 @@ bool emulate8080(state8080 *state, bool debug)
         // TODO: 0xf9: sphl
         // case 0xfa: jm
         // TODO: 0xfb: ei
+        case 0xfb:
+            state->interrupts_enabled = 1;
+            break;
         // case 0xfc: cm
         // case 0xfd: nop
         // case 0xfe: cpi
@@ -773,3 +780,39 @@ bool emulate8080(state8080 *state, bool debug)
     return true;
 }
 
+double get_time_ms(struct timeval *t)
+{
+    gettimeofday(t, 0);
+
+    double usec = (double) (t->tv_usec * 1e-6);
+    double sec = (double) t->tv_sec;
+    return sec + usec;
+}
+
+static void handle_interrupt(state8080 *state, uint8_t in)
+{
+    push_pc(state, 0);
+    state->interrupts_enabled = 0;
+    state->pc = 8 * in;
+}
+
+void run_emulator(state8080 *state)
+{
+        uint32_t ct, lt = 0;
+        ct = SDL_GetTicks();
+
+        int n = 0;
+        while (emulate_op8080(state, false)) {
+            n++;
+            
+            ct = SDL_GetTicks();
+            printf("ct: %u\n", ct);
+            printf("lt: %u\n", lt);
+            printf("delta: %u\n", ct - lt);
+            if (state->interrupts_enabled && (ct - lt) > 16) {
+                handle_interrupt(state, 2);
+                lt = ct;
+            }
+            if (n > 100000) break;
+        }
+}
