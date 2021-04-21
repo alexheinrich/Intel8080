@@ -803,10 +803,9 @@ static void draw_screen(SDL_Texture *t, SDL_Renderer *r, uint8_t *mem)
 
     for (int x = 0; x < SCREEN_W; ++x) {
         for (int y = 0; y < SCREEN_H; ++y) {
-            pixels[x * 4 + pitch * y] = mem[0x2400 + x * y];
-            pixels[x * 4 + 1 + pitch * y] = mem[0x2400 + x * y];
-            pixels[x * 4 + 2 + pitch * y] = mem[0x2400 + x * y];
-            
+            pixels[x * 4 + pitch * y] = rand() % 256;        // b
+            pixels[x * 4 + 1 + pitch * y] = rand() % 256;        // g
+            pixels[x * 4 + 2 + pitch * y] = rand() % 256;        // r
         }
     }
 
@@ -868,6 +867,7 @@ void run_emulator(state8080 *state)
             }
         }
 
+        n++;
         emulate_op8080(state, false);
         ct = SDL_GetTicks();
         if (state->interrupts_enabled && (ct - lt) > 16) {
@@ -875,6 +875,7 @@ void run_emulator(state8080 *state)
             lt = ct;
             draw_screen(t, r, state->memory);
         }
+        //if (n > 100000) break;
     }
 
     SDL_DestroyTexture(t);
