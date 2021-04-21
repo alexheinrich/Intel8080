@@ -801,11 +801,15 @@ static void draw_screen(SDL_Texture *t, SDL_Renderer *r, uint8_t *mem)
     uint8_t *pixels;
     SDL_LockTexture(t, NULL, (void **) &pixels, &pitch);
 
-    for (int x = 0; x < SCREEN_W; ++x) {
-        for (int y = 0; y < SCREEN_H; ++y) {
-            pixels[x * 4 + pitch * y] = rand() % 256;        // b
-            pixels[x * 4 + 1 + pitch * y] = rand() % 256;        // g
-            pixels[x * 4 + 2 + pitch * y] = rand() % 256;        // r
+    for (int lin = 0; lin < SCREEN_H; ++lin) {
+        for (int col = 0; col < SCREEN_W; ++col) {
+            uint8_t offset = (col / 8) * 8;
+            uint8_t val = mem[0x2400 + offset + SCREEN_W * lin];
+            val = ((val >> (col % 8)) & 0x01) * 255;
+            pixels[col * 4 + pitch * lin] = val;        // b
+            pixels[col * 4 + 1 + pitch * lin] = val;        // g
+            pixels[col * 4 + 2 + pitch * lin] = val;        // r
+            
         }
     }
 
