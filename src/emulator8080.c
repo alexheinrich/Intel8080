@@ -2,6 +2,10 @@
 #include "debug8080.h"
 #include "shift_register.h"
 
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_pixels.h>
+#include <SDL2/SDL_render.h>
+#include <SDL2/SDL_video.h>
 #include <errno.h>
 #include <SDL2/SDL.h>
 #include <stdbool.h>
@@ -11,6 +15,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+
+#define SCREEN_W 256
+#define SCREEN_H 224
 
 static uint8_t get_in(uint8_t port)
 {
@@ -780,15 +787,6 @@ bool emulate_op8080(state8080 *state, bool debug)
     return true;
 }
 
-double get_time_ms(struct timeval *t)
-{
-    gettimeofday(t, 0);
-
-    double usec = (double) (t->tv_usec * 1e-6);
-    double sec = (double) t->tv_sec;
-    return sec + usec;
-}
-
 static void handle_interrupt(state8080 *state, uint8_t in)
 {
     push_pc(state, 0);
@@ -796,23 +794,91 @@ static void handle_interrupt(state8080 *state, uint8_t in)
     state->pc = 8 * in;
 }
 
+static void draw_screen(SDL_Texture *t, SDL_Renderer *r, uint8_t *mem)
+{
+    
+    int pitch;
+    uint8_t *pixels;
+    SDL_LockTexture(t, NULL, (void **) &pixels, &pitch);
+
+    for (int x = 0; x < SCREEN_W; ++x) {
+        for (int y = 0; y < SCREEN_H; ++y) {
+            pixels[x * 4 + pitch * y] = mem[0x2400 + x * y];
+            pixels[x * 4 + 1 + pitch * y] = mem[0x2400 + x * y];
+            pixels[x * 4 + 2 + pitch * y] = mem[0x2400 + x * y];
+            
+        }
+    }
+
+    SDL_UnlockTexture(t);
+    SDL_RenderCopy(r, t, NULL, NULL);
+    SDL_RenderPresent(r);
+}
+
+
+
 void run_emulator(state8080 *state)
 {
-        uint32_t ct, lt = 0;
-        ct = SDL_GetTicks();
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
+        return;
+    }
 
-        int n = 0;
-        while (emulate_op8080(state, false)) {
-            n++;
-            
-            ct = SDL_GetTicks();
-            printf("ct: %u\n", ct);
-            printf("lt: %u\n", lt);
-            printf("delta: %u\n", ct - lt);
-            if (state->interrupts_enabled && (ct - lt) > 16) {
-                handle_interrupt(state, 2);
-                lt = ct;
+    SDL_Window *w = SDL_CreateWindow("Intel 8080 Emulator",
+                                     SDL_WINDOWPOS_CENTERED,
+                                     SDL_WINDOWPOS_CENTERED,
+                                     SCREEN_W,
+                                     SCREEN_H,
+                                     0);
+
+    if (!w) {
+        fprintf(stderr, "Failed to create SDL window.\n");
+        return;
+    }
+
+    SDL_Renderer *r = SDL_CreateRenderer(w, -1, SDL_RENDERER_ACCELERATED);
+    
+    if (!r) {
+        SDL_Log("Unable to create renderer: %s", SDL_GetError());
+        return;
+    }
+
+    SDL_Texture *t = SDL_CreateTexture(r,
+                                       SDL_PIXELFORMAT_RGB888,
+                                       SDL_TEXTUREACCESS_STREAMING,
+                                       SCREEN_W,
+                                       SCREEN_H
+                                       );
+
+    if (!t) {
+        SDL_Log("Unable to create texture: %s", SDL_GetError());
+        return;
+    }
+
+    uint32_t ct, lt = 0;
+    ct = SDL_GetTicks();
+
+    SDL_Event e;
+    bool quit = false;
+    int n = 0;
+    while (!quit) {
+        while (SDL_PollEvent(&e) > 0) {
+            if (e.type == SDL_QUIT) {
+                quit = true;
             }
-            if (n > 100000) break;
         }
+
+        emulate_op8080(state, false);
+        ct = SDL_GetTicks();
+        if (state->interrupts_enabled && (ct - lt) > 16) {
+            handle_interrupt(state, 2);
+            lt = ct;
+            draw_screen(t, r, state->memory);
+        }
+    }
+
+    SDL_DestroyTexture(t);
+    SDL_DestroyRenderer(r);
+    SDL_DestroyWindow(w);
+    SDL_Quit();
 }
