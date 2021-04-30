@@ -1,6 +1,7 @@
 #include "emulator8080.h"
 #include "debug8080.h"
 #include "shift_register.h"
+#include "video_driver.h"
 
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_pixels.h>
@@ -16,8 +17,11 @@
 #include <string.h>
 #include <sys/time.h>
 
-#define SCREEN_W 256
-#define SCREEN_H 224
+#define SCREEN_OFFSET 0x2400
+#define SCREEN_W_ORIG 256
+#define SCREEN_H_ORIG 224
+#define SCREEN_W SCREEN_H_ORIG
+#define SCREEN_H SCREEN_W_ORIG
 
 static uint8_t get_in(uint8_t port)
 {
@@ -788,22 +792,34 @@ static void handle_interrupt(state8080 *state, uint8_t in)
 
 static void draw_screen(SDL_Texture *t, SDL_Renderer *r, uint8_t *mem)
 {
-    
     int pitch;
     uint8_t *pixels;
     SDL_LockTexture(t, NULL, (void **) &pixels, &pitch);
 
-    for (int lin = 0; lin < SCREEN_H; ++lin) {
-        for (int col = 0; col < SCREEN_W; ++col) {
-            uint8_t offset = (col / 8) * 8;
-            uint8_t val = mem[0x2400 + offset + SCREEN_W * lin];
-            val = ((val >> (col % 8)) & 0x01) * 255;
-            pixels[col * 4 + pitch * lin] = val;        // b
-            pixels[col * 4 + 1 + pitch * lin] = val;        // g
-            pixels[col * 4 + 2 + pitch * lin] = val;        // r
-            
+    uint8_t pixels_orig[SCREEN_H_ORIG][SCREEN_W_ORIG];
+
+    for (uint32_t lin = 0; lin < SCREEN_H_ORIG; ++lin) {
+        for (uint32_t col = 0; col < SCREEN_W_ORIG; ++col) {
+            uint32_t byte = lin * SCREEN_W_ORIG / 8 + col / 8;    
+            uint32_t bit_off = col % 8;
+            uint32_t bit = (mem[SCREEN_OFFSET + byte] >> bit_off) & 0x01;
+            uint32_t channel = bit * 255;
+
+            pixels_orig[lin][col] = channel;
+
         }
     }
+
+    for (uint32_t lin = 0; lin < SCREEN_H; ++lin) {
+        for (uint32_t col = 0; col < SCREEN_W; ++ col) {
+            uint32_t channel = pixels_orig[col][SCREEN_H - lin - 1];
+            pixels[col * 4 + pitch * lin] = channel;        // b
+            pixels[col * 4 + 1 + pitch * lin] = channel;        // g
+            pixels[col * 4 + 2 + pitch * lin] = channel;        // r
+        }
+    }
+
+    
 
     SDL_UnlockTexture(t);
     SDL_RenderCopy(r, t, NULL, NULL);
@@ -870,8 +886,8 @@ void run_emulator(state8080 *state)
             handle_interrupt(state, 2);
             lt = ct;
             draw_screen(t, r, state->memory);
+
         }
-        //if (n > 100000) break;
     }
 
     SDL_DestroyTexture(t);
