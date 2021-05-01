@@ -25,7 +25,6 @@ static bool op_excl(uint8_t opcode)
     switch (opcode) {
         case 0x27: // daa
         case 0xdb: // in
-        case 0xde: // sbi
         case 0xe3: // xthl
             return true;
         default:
