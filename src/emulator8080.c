@@ -441,7 +441,7 @@ bool emulate_op8080(state8080 *state, bool debug)
 
         if (jump) {
             pop_pc(state);
-            pc_inr = 1;
+            pc_inr = 0;
         }
     }
     
