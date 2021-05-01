@@ -30,7 +30,7 @@ static uint8_t get_in(uint8_t port)
         case 0x03:
             return sreg_get_val();
         default:
-            return 0;
+            return 0x00;
     }
 }
 
@@ -56,6 +56,8 @@ static bool par_even(uint8_t num)
 
     return !(t3 & 0x01);
 }
+
+uint8_t dummy = 0x00;
 
 static uint8_t *get_reg(uint8_t src_num, state8080 *state)
 {
@@ -553,7 +555,6 @@ bool emulate_op8080(state8080 *state, bool debug)
             {
                 uint16_t addr = (uint16_t) ((state->d << 8) + state->e);
                 state->memory[addr] = state->a;
-                printf("stax d: %02x\n", state->memory[addr]);
                 break;
             }
         // case 0x13: inx d
@@ -798,15 +799,24 @@ int run_emulator(char *rom)
 
     uint32_t ct, lt = 0;
     bool quit = false;
-    
-    while (!quit) {
-        emulate_op8080(&state, false);
-        ct = SDL_GetTicks();
+    uint8_t i_n = 0;
 
-        if (state.interrupts_enabled && (ct - lt) > 16) {
+    while (!quit) {
+        emulate_op8080(&state, true);
+        ct = SDL_GetTicks();
+        
+        if (state.interrupts_enabled && (ct - lt) > 16 && i_n == 0) {
             handle_interrupt(&state, 2);
             lt = ct;
             quit = !video_exec(&state);
+            i_n = 1;
+        }
+
+        if (state.interrupts_enabled && (ct - lt) > 16 && i_n == 1) {
+            handle_interrupt(&state, 2);
+            lt = ct;
+            quit = !video_exec(&state);
+            i_n = 0;
         }
     }
 
