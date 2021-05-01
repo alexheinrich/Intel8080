@@ -4,9 +4,11 @@ SDL2_LIB := $(SDL2)/lib
 LIBS =	$(SDL2_LIB)/libSDL2.a
 
 GCC := gcc
-C_FLAGS := -Og -g -Wall -Wextra -Wconversion -Wsign-conversion -I $(SDL2_INC)
+C_FLAGS := -Og -g -Wall -Wextra -Wconversion -Wsign-conversion -fno-strict-aliasing \
+		   -I $(SDL2_INC)
 
-SRC := main.c emulator8080.c debug8080.c disassembler8080.c utils8080.c test8080.c shift_register.c video_driver.c
+SRC := main.c emulator8080.c debug8080.c disassembler8080.c utils8080.c \
+	   test8080.c shift_register.c video_driver.c
 OBJ := $(SRC:.c=.o)
 OBJ_P := $(OBJ:%=build/%)
 
