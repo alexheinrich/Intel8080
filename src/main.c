@@ -58,14 +58,7 @@ int32_t main(int32_t argc, char *argv[])
 
         unload_rom(&state);
     } else {
-        state8080 state;
-        if (load_rom(&state, argv[1]) < 0) {
-            return 1;
-        }
-        
-        run_emulator(&state);
-
-        unload_rom(&state);
+        run_emulator(argv[1]);
     }
 
     return 0;

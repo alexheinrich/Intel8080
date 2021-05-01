@@ -1,6 +1,7 @@
 #include "emulator8080.h"
 #include "debug8080.h"
 #include "shift_register.h"
+#include "utils8080.h"
 #include "video_driver.h"
 
 #include <SDL2/SDL_events.h>
@@ -790,32 +791,31 @@ static void handle_interrupt(state8080 *state, uint8_t in)
     state->pc = 8 * in;
 }
 
-void run_emulator(state8080 *state)
+int run_emulator(char *rom)
 {
+    state8080 state;
+
+    if (load_rom(&state, rom) < 0) {
+        return 1;
+    }
+        
     video_init();
 
     uint32_t ct, lt = 0;
-    ct = SDL_GetTicks();
-
-    SDL_Event e;
     bool quit = false;
-    int n = 0;
+    
     while (!quit) {
-        while (SDL_PollEvent(&e) > 0) {
-            if (e.type == SDL_QUIT) {
-                quit = true;
-            }
-        }
-
-        n++;
-        emulate_op8080(state, false);
+        emulate_op8080(&state, false);
         ct = SDL_GetTicks();
-        if (state->interrupts_enabled && (ct - lt) > 16) {
-            handle_interrupt(state, 2);
+        if (state.interrupts_enabled && (ct - lt) > 16) {
+            handle_interrupt(&state, 2);
             lt = ct;
-            video_exec(state);
+            quit = !video_exec(&state);
         }
     }
 
     video_quit();
+    unload_rom(&state);
+
+    return 0;
 }

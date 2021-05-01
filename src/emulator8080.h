@@ -30,6 +30,6 @@ typedef struct {
     uint8_t interrupts_enabled;
 } state8080;
 
-void run_emulator(state8080 *state);
+int run_emulator(char *rom);
 bool emulate_op8080(state8080 *state, bool debug);
 
