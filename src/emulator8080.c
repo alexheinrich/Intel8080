@@ -790,81 +790,9 @@ static void handle_interrupt(state8080 *state, uint8_t in)
     state->pc = 8 * in;
 }
 
-static void draw_screen(SDL_Texture *t, SDL_Renderer *r, uint8_t *mem)
-{
-    int pitch;
-    uint8_t *pixels;
-    SDL_LockTexture(t, NULL, (void **) &pixels, &pitch);
-
-    uint8_t pixels_orig[SCREEN_H_ORIG][SCREEN_W_ORIG];
-
-    for (uint32_t lin = 0; lin < SCREEN_H_ORIG; ++lin) {
-        for (uint32_t col = 0; col < SCREEN_W_ORIG; ++col) {
-            uint32_t byte = lin * SCREEN_W_ORIG / 8 + col / 8;    
-            uint32_t bit_off = col % 8;
-            uint32_t bit = (mem[SCREEN_OFFSET + byte] >> bit_off) & 0x01;
-            uint32_t channel = bit * 255;
-
-            pixels_orig[lin][col] = channel;
-
-        }
-    }
-
-    for (uint32_t lin = 0; lin < SCREEN_H; ++lin) {
-        for (uint32_t col = 0; col < SCREEN_W; ++ col) {
-            uint32_t channel = pixels_orig[col][SCREEN_H - lin - 1];
-            pixels[col * 4 + pitch * lin] = channel;        // b
-            pixels[col * 4 + 1 + pitch * lin] = channel;        // g
-            pixels[col * 4 + 2 + pitch * lin] = channel;        // r
-        }
-    }
-
-    
-
-    SDL_UnlockTexture(t);
-    SDL_RenderCopy(r, t, NULL, NULL);
-    SDL_RenderPresent(r);
-}
-
-
-
 void run_emulator(state8080 *state)
 {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
-        return;
-    }
-
-    SDL_Window *w = SDL_CreateWindow("Intel 8080 Emulator",
-                                     SDL_WINDOWPOS_CENTERED,
-                                     SDL_WINDOWPOS_CENTERED,
-                                     SCREEN_W,
-                                     SCREEN_H,
-                                     0);
-
-    if (!w) {
-        fprintf(stderr, "Failed to create SDL window.\n");
-        return;
-    }
-
-    SDL_Renderer *r = SDL_CreateRenderer(w, -1, SDL_RENDERER_ACCELERATED);
-    
-    if (!r) {
-        SDL_Log("Unable to create renderer: %s", SDL_GetError());
-        return;
-    }
-
-    SDL_Texture *t = SDL_CreateTexture(r,
-                                       SDL_PIXELFORMAT_RGB888,
-                                       SDL_TEXTUREACCESS_STREAMING,
-                                       SCREEN_W,
-                                       SCREEN_H
-                                       );
-
-    if (!t) {
-        SDL_Log("Unable to create texture: %s", SDL_GetError());
-        return;
-    }
+    video_init();
 
     uint32_t ct, lt = 0;
     ct = SDL_GetTicks();
@@ -885,13 +813,9 @@ void run_emulator(state8080 *state)
         if (state->interrupts_enabled && (ct - lt) > 16) {
             handle_interrupt(state, 2);
             lt = ct;
-            draw_screen(t, r, state->memory);
-
+            video_exec(state);
         }
     }
 
-    SDL_DestroyTexture(t);
-    SDL_DestroyRenderer(r);
-    SDL_DestroyWindow(w);
-    SDL_Quit();
+    video_quit();
 }
