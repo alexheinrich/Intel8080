@@ -28,6 +28,7 @@ static uint8_t get_in(uint8_t port)
 {
     switch (port) {
         case 0x03:
+            //printf("Read. Port %u, Value %02x\n", port, sreg_get_val());
             return sreg_get_val();
         default:
             return 0x00;
@@ -38,9 +39,11 @@ static void wr_out(uint8_t port, uint8_t val)
 {
     switch (port) {
         case 0x02: 
+            //printf("Write. Port %u, Value %02x\n", port, val);
             sreg_set_shift(val);
             break;
         case 0x04:
+            //printf("Write. Port %u, Value %02x\n", port, val);
             sreg_push_val(val);
             break;
         default:
@@ -802,11 +805,11 @@ int run_emulator(char *rom)
     uint8_t i_n = 0;
 
     while (!quit) {
-        emulate_op8080(&state, true);
+        emulate_op8080(&state, false);
         ct = SDL_GetTicks();
         
         if (state.interrupts_enabled && (ct - lt) > 16 && i_n == 0) {
-            handle_interrupt(&state, 2);
+            handle_interrupt(&state, 1);
             lt = ct;
             quit = !video_exec(&state);
             i_n = 1;
