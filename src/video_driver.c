@@ -22,7 +22,7 @@ static void draw_screen(uint8_t *mem)
     uint8_t *pixels;
     SDL_LockTexture(tex, NULL, (void **) &pixels, &pitch);
 
-    uint8_t pixels_orig[SCREEN_H_ORIG][SCREEN_W_ORIG];
+    unsigned int pixels_orig[SCREEN_H_ORIG][SCREEN_W_ORIG];
 
     for (uint32_t lin = 0; lin < SCREEN_H_ORIG; ++lin) {
         for (uint32_t col = 0; col < SCREEN_W_ORIG; ++col) {

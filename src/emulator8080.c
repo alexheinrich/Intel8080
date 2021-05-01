@@ -28,7 +28,6 @@ static uint8_t get_in(uint8_t port)
 {
     switch (port) {
         case 0x03:
-            printf("get val!\n\n\n");
             return sreg_get_val();
         default:
             return 0;
@@ -39,11 +38,9 @@ static void wr_out(uint8_t port, uint8_t val)
 {
     switch (port) {
         case 0x02: 
-            printf("set shift by val! %u\n\n\n", val);
             sreg_set_shift(val);
             break;
         case 0x04:
-            printf("push val! %u\n\n\n", val);
             sreg_push_val(val);
             break;
         default:
@@ -198,7 +195,7 @@ static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
             {
                 uint16_t tmp = (uint16_t) (state->a + src_val);
                 state->a = (uint8_t) tmp;
-                state->cf.cy = (tmp >> 8) & 0x01;
+                state->cf.cy = (uint8_t) ((tmp >> 8) & 0x01);
                 set_szp(state, state->a);
                 break;
             }
@@ -207,7 +204,7 @@ static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
             {
                 uint16_t tmp = (uint16_t) (state->a + src_val + state->cf.cy);
                 state->a = (uint8_t) tmp;
-                state->cf.cy = (tmp >> 8) & 0x01;
+                state->cf.cy = (uint8_t) ((tmp >> 8) & 0x01);
                 set_szp(state, state->a);
                 break;
             }
@@ -216,7 +213,7 @@ static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
             {
                 uint16_t tmp = (uint16_t) (state->a - src_val);
                 state->a = (uint8_t) tmp;
-                state->cf.cy = (tmp >> 8) & 0x01;
+                state->cf.cy = (uint8_t) ((tmp >> 8) & 0x01);
                 set_szp(state, state->a);
                 break;
             }
@@ -225,7 +222,7 @@ static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
             {
                 uint16_t tmp = (uint16_t) (state->a - src_val - state->cf.cy);
                 state->a = (uint8_t) tmp;
-                state->cf.cy = (tmp >> 8) & 0x01;
+                state->cf.cy = (uint8_t) ((tmp >> 8) & 0x01);
                 set_szp(state, state->a);
                 break;
             }
@@ -257,8 +254,8 @@ static void do_arith_op(uint8_t op_num, uint8_t src_val , state8080 *state)
         case 0x07: // cmp (a < source)
             {
                 uint16_t tmp = (uint16_t) (state->a - src_val);
-                state->cf.cy = (tmp >> 8) & 0x01;
-                set_szp(state, tmp);
+                state->cf.cy = (uint8_t) ((tmp >> 8) & 0x01);
+                set_szp(state, (uint8_t) tmp);
                 break;
             }
     }
@@ -567,7 +564,7 @@ bool emulate_op8080(state8080 *state, bool debug)
             {
                 uint8_t buf = state->a >> 7 != 0;
                 state->a = (uint8_t) ((uint8_t) (state->a << 1) + state->cf.cy);
-                state->cf.cy = buf;
+                state->cf.cy = (uint8_t) (buf & 0x01);
                 break;
             }
         // case 0x18: nop
@@ -586,7 +583,7 @@ bool emulate_op8080(state8080 *state, bool debug)
             {
                 uint8_t buf = (uint8_t) (state->a & 0x01);
                 state->a = (uint8_t) ((state->a >> 1) + (state->cf.cy << 7));
-                state->cf.cy = buf;
+                state->cf.cy = (uint8_t) (buf & 0x01);
                 break;
             }
         // case 0x20: nop
@@ -683,7 +680,7 @@ bool emulate_op8080(state8080 *state, bool debug)
         case 0xc9: // ret
             {
                 state->pc = state->memory[state->sp++];
-                state->pc |= state->memory[state->sp++] << 8;
+                state->pc |= (uint16_t) (state->memory[state->sp++] << 8);
                 pc_inr = 0;
                 break;
             }
@@ -754,7 +751,6 @@ bool emulate_op8080(state8080 *state, bool debug)
         // case 0xf0: rp
         // case 0xf1: pop psw
         // case 0xf2: jpe
-        // TODO: 0xf3: di
         case 0xf3:
             state->interrupts_enabled = 0;
             break;
@@ -765,7 +761,6 @@ bool emulate_op8080(state8080 *state, bool debug)
         // case 0xf8: rm
         // TODO: 0xf9: sphl
         // case 0xfa: jm
-        // TODO: 0xfb: ei
         case 0xfb:
             state->interrupts_enabled = 1;
             break;
@@ -807,6 +802,7 @@ int run_emulator(char *rom)
     while (!quit) {
         emulate_op8080(&state, false);
         ct = SDL_GetTicks();
+
         if (state.interrupts_enabled && (ct - lt) > 16) {
             handle_interrupt(&state, 2);
             lt = ct;
