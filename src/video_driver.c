@@ -22,25 +22,17 @@ static void draw_screen(uint8_t *mem)
     uint8_t *pixels;
     SDL_LockTexture(tex, NULL, (void **) &pixels, &pitch);
 
-    unsigned int pixels_orig[SCREEN_H_ORIG][SCREEN_W_ORIG];
-
-    for (uint32_t lin = 0; lin < SCREEN_H_ORIG; ++lin) {
-        for (uint32_t col = 0; col < SCREEN_W_ORIG; ++col) {
-            uint32_t byte = lin * SCREEN_W_ORIG / 8 + col / 8;    
-            uint32_t bit_off = col % 8;
-            uint32_t bit = (mem[SCREEN_OFFSET + byte] >> bit_off) & 0x01;
-            uint32_t channel = bit * 255;
-
-            pixels_orig[lin][col] = channel;
-        }
-    }
-
     for (uint32_t lin = 0; lin < SCREEN_H; ++lin) {
         for (uint32_t col = 0; col < SCREEN_W; ++ col) {
-            uint32_t channel = pixels_orig[col][SCREEN_H - lin - 1];
-            pixels[col * 4 + pitch * lin] = channel;        // b
-            pixels[col * 4 + 1 + pitch * lin] = channel;        // g
-            pixels[col * 4 + 2 + pitch * lin] = channel;        // r
+            uint32_t byte = col * (SCREEN_W_ORIG >> 3) + ((SCREEN_W_ORIG - lin) >> 3);
+            uint8_t bit_off = ~lin & 0x07;
+            uint8_t bit = (mem[SCREEN_OFFSET + byte] >> bit_off) & 0x01;
+            uint8_t channel = (uint8_t) (-bit & 0xff);
+
+            uint32_t sdl_coordinate = (col << 2) + lin * (uint32_t) pitch;
+            pixels[sdl_coordinate] = channel;     // b
+            pixels[sdl_coordinate + 1] = channel; // g
+            pixels[sdl_coordinate + 2] = channel; // r
         }
     }
 
