@@ -7,6 +7,7 @@
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_render.h>
+#include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
 #include <errno.h>
 #include <SDL2/SDL.h>
@@ -800,26 +801,19 @@ int run_emulator(char *rom)
         
     video_init();
 
-    uint32_t ct, lt = 0;
+    uint32_t ct, lt = SDL_GetTicks();
     bool quit = false;
-    uint8_t i_n = 0;
+    uint8_t i_n = 1;
 
     while (!quit) {
         emulate_op8080(&state, false);
         ct = SDL_GetTicks();
         
-        if (state.interrupts_enabled && (ct - lt) > 16 && i_n == 0) {
-            handle_interrupt(&state, 1);
+        if (state.interrupts_enabled && (ct - lt) > 16) {
+            handle_interrupt(&state, i_n);
+            quit = video_exec(&state);
             lt = ct;
-            quit = !video_exec(&state);
-            i_n = 1;
-        }
-
-        if (state.interrupts_enabled && (ct - lt) > 16 && i_n == 1) {
-            handle_interrupt(&state, 2);
-            lt = ct;
-            quit = !video_exec(&state);
-            i_n = 0;
+            i_n ^= 0x03;
         }
     }
 

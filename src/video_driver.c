@@ -27,12 +27,12 @@ static void draw_screen(uint8_t *mem)
             uint32_t byte = col * (SCREEN_W_ORIG >> 3) + ((SCREEN_W_ORIG - lin) >> 3);
             uint8_t bit_off = ~lin & 0x07;
             uint8_t bit = (mem[SCREEN_OFFSET + byte] >> bit_off) & 0x01;
-            uint8_t channel = (uint8_t) (-bit & 0xff);
+            uint8_t normalized_val = (uint8_t) (-bit & 0xff);
 
-            uint32_t sdl_coordinate = (col << 2) + lin * (uint32_t) pitch;
-            pixels[sdl_coordinate] = channel;     // b
-            pixels[sdl_coordinate + 1] = channel; // g
-            pixels[sdl_coordinate + 2] = channel; // r
+            uint32_t tex_coordinate = (col << 2) + lin * (uint32_t) pitch;
+            pixels[tex_coordinate] = normalized_val;     // b
+            pixels[tex_coordinate + 1] = normalized_val; // g
+            pixels[tex_coordinate + 2] = normalized_val; // r
         }
     }
 
@@ -86,12 +86,12 @@ bool video_exec(state8080 *state)
 {
     while (SDL_PollEvent(&evt) > 0) {
         if (evt.type == SDL_QUIT) {
-            return false;
+            return true;
         }
     }
 
     draw_screen(state->memory);
-    return true;
+    return false;
 }
 
 void video_quit()
