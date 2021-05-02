@@ -25,9 +25,13 @@
 #define SCREEN_W SCREEN_H_ORIG
 #define SCREEN_H SCREEN_W_ORIG
 
+uint8_t port1 = 0x00;
+
 static uint8_t get_in(uint8_t port)
 {
     switch (port) {
+        case 0x01:
+            return port1;
         case 0x03:
             //printf("Read. Port %u, Value %02x\n", port, sreg_get_val());
             return sreg_get_val();

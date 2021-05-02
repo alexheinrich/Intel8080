@@ -87,6 +87,52 @@ bool video_exec(state8080 *state)
     while (SDL_PollEvent(&evt) > 0) {
         if (evt.type == SDL_QUIT) {
             return true;
+        } else if (evt.type == SDL_KEYDOWN) {
+            switch (evt.key.keysym.sym) {
+                case SDLK_LEFT:
+                    printf("Left\n");
+                    port1 |= 0x20;
+                    break;
+                case SDLK_RIGHT:
+                    printf("rIGGHT\n");
+                    port1 |= 0x40;
+                    break;
+                case SDLK_SPACE:
+                    printf("Space bar\n");
+                    port1 |= 0x10;
+                    break;
+                case SDLK_c:
+                    printf("C\n");
+                    port1 |= 0x01;
+                    break;
+                case SDLK_RETURN:
+                    printf("Enter\n");
+                    port1 |= 0x04;
+                    break;
+            }
+        } else if (evt.type == SDL_KEYUP) {
+            switch (evt.key.keysym.sym) {
+                case SDLK_LEFT:
+                    printf("Left Up\n");
+                    port1 &= 0xdf;
+                    break;
+                case SDLK_RIGHT:
+                    printf("rIGGHT Up\n");
+                    port1 &= 0xbf;
+                    break;
+                case SDLK_SPACE:
+                    printf("Space bar Up\n");
+                    port1 &= 0xef;
+                    break;
+                case SDLK_c:
+                    printf("C Up\n");
+                    port1 &= 0xfe;
+                    break;
+                case SDLK_RETURN:
+                    printf("Enter\n");
+                    port1 &= 0xfb;
+                    break;
+            }
         }
     }
 
