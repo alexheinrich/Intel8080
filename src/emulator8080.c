@@ -2,7 +2,7 @@
 #include "debug8080.h"
 #include "shift_register.h"
 #include "utils8080.h"
-#include "video_driver.h"
+#include "sdl.h"
 
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_pixels.h>
@@ -803,7 +803,7 @@ int run_emulator(char *rom)
         return 1;
     }
         
-    video_init();
+    sdl_init();
 
     uint32_t ct, lt = SDL_GetTicks();
     bool quit = false;
@@ -815,13 +815,13 @@ int run_emulator(char *rom)
         
         if (state.interrupts_enabled && (ct - lt) > 16) {
             handle_interrupt(&state, i_n);
-            quit = video_exec(&state);
+            quit = sdl_exec(&state);
             lt = ct;
             i_n ^= 0x03;
         }
     }
 
-    video_quit();
+    sdl_quit();
     unload_rom(&state);
 
     return 0;

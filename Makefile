@@ -8,7 +8,7 @@ C_FLAGS := -Og -g -Wall -Wextra -Wconversion -Wsign-conversion -fno-strict-alias
 		   -I $(SDL2_INC)
 
 SRC := main.c emulator8080.c debug8080.c disassembler8080.c utils8080.c \
-	   test8080.c shift_register.c video_driver.c
+	   test8080.c shift_register.c sdl.c
 OBJ := $(SRC:.c=.o)
 OBJ_P := $(OBJ:%=build/%)
 

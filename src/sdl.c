@@ -2,7 +2,7 @@
 #include <stdbool.h>
 
 #include "emulator8080.h"
-#include "video_driver.h"
+#include "sdl.h"
 
 #define SCREEN_OFFSET 0x2400
 #define SCREEN_W_ORIG 256
@@ -13,7 +13,6 @@
 static SDL_Window *win;
 static SDL_Renderer *ren;
 static SDL_Texture *tex;
-
 static SDL_Event evt;
 
 static void draw_screen(uint8_t *mem)
@@ -41,9 +40,7 @@ static void draw_screen(uint8_t *mem)
     SDL_RenderPresent(ren);
 }
 
-
-
-void video_init()
+void sdl_init()
 {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
@@ -51,11 +48,11 @@ void video_init()
     }
 
     win = SDL_CreateWindow("Intel 8080 Emulator",
-                                     SDL_WINDOWPOS_CENTERED,
-                                     SDL_WINDOWPOS_CENTERED,
-                                     SCREEN_W,
-                                     SCREEN_H,
-                                     0);
+                            SDL_WINDOWPOS_CENTERED,
+                            SDL_WINDOWPOS_CENTERED,
+                            SCREEN_W,
+                            SCREEN_H,
+                            0);
 
     if (!win) {
         fprintf(stderr, "Failed to create SDL window.\n");
@@ -70,11 +67,11 @@ void video_init()
     }
 
     tex = SDL_CreateTexture(ren,
-                                       SDL_PIXELFORMAT_RGB888,
-                                       SDL_TEXTUREACCESS_STREAMING,
-                                       SCREEN_W,
-                                       SCREEN_H
-                                       );
+                            SDL_PIXELFORMAT_RGB888,
+                            SDL_TEXTUREACCESS_STREAMING,
+                            SCREEN_W,
+                            SCREEN_H
+                            );
 
     if (!tex) {
         SDL_Log("Unable to create texture: %s", SDL_GetError());
@@ -82,7 +79,7 @@ void video_init()
     }
 }
 
-bool video_exec(state8080 *state)
+bool sdl_exec(state8080 *state)
 {
     while (SDL_PollEvent(&evt) > 0) {
         if (evt.type == SDL_QUIT) {
@@ -90,46 +87,36 @@ bool video_exec(state8080 *state)
         } else if (evt.type == SDL_KEYDOWN) {
             switch (evt.key.keysym.sym) {
                 case SDLK_LEFT:
-                    printf("Left\n");
                     port1 |= 0x20;
                     break;
                 case SDLK_RIGHT:
-                    printf("rIGGHT\n");
                     port1 |= 0x40;
                     break;
                 case SDLK_SPACE:
-                    printf("Space bar\n");
                     port1 |= 0x10;
                     break;
                 case SDLK_c:
-                    printf("C\n");
                     port1 |= 0x01;
                     break;
                 case SDLK_RETURN:
-                    printf("Enter\n");
                     port1 |= 0x04;
                     break;
             }
         } else if (evt.type == SDL_KEYUP) {
             switch (evt.key.keysym.sym) {
                 case SDLK_LEFT:
-                    printf("Left Up\n");
                     port1 &= 0xdf;
                     break;
                 case SDLK_RIGHT:
-                    printf("rIGGHT Up\n");
                     port1 &= 0xbf;
                     break;
                 case SDLK_SPACE:
-                    printf("Space bar Up\n");
                     port1 &= 0xef;
                     break;
                 case SDLK_c:
-                    printf("C Up\n");
                     port1 &= 0xfe;
                     break;
                 case SDLK_RETURN:
-                    printf("Enter\n");
                     port1 &= 0xfb;
                     break;
             }
@@ -137,10 +124,11 @@ bool video_exec(state8080 *state)
     }
 
     draw_screen(state->memory);
+
     return false;
 }
 
-void video_quit()
+void sdl_quit()
 {
     SDL_DestroyTexture(tex);
     SDL_DestroyRenderer(ren);
