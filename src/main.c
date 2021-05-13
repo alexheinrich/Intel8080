@@ -1,16 +1,6 @@
-#include "utils8080.h"
 #include "emulator8080.h"
 #include "disassembler8080.h"
 #include "test8080.h"
-
-#include <assert.h>
-#include <errno.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 static void usage(void)
 {
@@ -29,33 +19,16 @@ int32_t main(int32_t argc, char *argv[])
     }
 
     if (strcmp(argv[1], "-t") == 0) {
-        FILE *f = open_f("test/test_cases.txt");
-        int n = 0;
-        while (exec_test_case(f)) {
-            printf("------ %d\n", n);
-            n++;
-        }
-
-        close_f(f);
+        run_test_cases("test/test_cases.txt");
     } else if (strcmp(argv[1], "-d") == 0) {
         if (argc < 3) {
             printf("Enter file to disassemble\n");
             return 1;
         }
 
-        state8080 state;
-        ssize_t fsize = load_rom(&state, argv[2]);
-        if (fsize < 0) {
+        if (run_disassembler(argv[2])) {
             return 1;
         }
-        
-        size_t bc = 0;
-
-        while (bc < (size_t) fsize) {
-            bc += disassemble_op8080(state.memory, bc);
-        }
-
-        unload_rom(&state);
     } else {
         run_emulator(argv[1]);
     }

@@ -207,7 +207,7 @@ static void destroy_state_mem(state8080 *state)
     unload_rom(state);
 }
 
-bool exec_test_case(FILE *f)
+static bool exec_test_case(FILE *f)
 {
     char *line_p = NULL;
     size_t n = 0; 
@@ -256,4 +256,16 @@ bool exec_test_case(FILE *f)
     }
 
     return success;
+}
+
+void run_test_cases(char *file)
+{
+        FILE *f = open_f(file);
+        int n = 0;
+        while (exec_test_case(f)) {
+            printf("------ %d\n", n);
+            n++;
+        }
+
+        close_f(f);
 }

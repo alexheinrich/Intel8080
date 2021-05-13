@@ -6,5 +6,5 @@
 #include <stdio.h>
 #include <string.h>
 
-bool exec_test_case(FILE *f);
+void run_test_cases(char *file);
 

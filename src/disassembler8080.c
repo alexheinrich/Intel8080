@@ -1,3 +1,5 @@
+#include "utils8080.h"
+
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -465,3 +467,20 @@ size_t disassemble_op8080(unsigned char *buffer, size_t pc)
     return opbytes;
 }
 
+int32_t run_disassembler(char *rom)
+{
+    state8080 state;
+    ssize_t fsize = load_rom(&state, rom);
+    if (fsize < 0) {
+        return 1;
+    }
+    
+    size_t bc = 0;
+
+    while (bc < (size_t) fsize) {
+        bc += disassemble_op8080(state.memory, bc);
+    }
+
+    unload_rom(&state);
+    return 0;
+}
