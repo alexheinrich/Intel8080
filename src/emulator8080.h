@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define PORT_NUM 256
+
 typedef struct {
     uint8_t cy:1; // carry over
     uint8_t pad1:1;
@@ -30,7 +32,7 @@ typedef struct {
     uint8_t interrupts_enabled;
 } state8080;
 
-extern uint8_t port1;
+extern uint8_t ports[PORT_NUM];
 
 int run_emulator(char *rom);
 bool emulate_op8080(state8080 *state, bool debug);

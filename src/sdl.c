@@ -9,6 +9,7 @@
 #define SCREEN_H_ORIG 224
 #define SCREEN_W SCREEN_H_ORIG
 #define SCREEN_H SCREEN_W_ORIG
+#define SDL_PORT 0x01
 
 static SDL_Window *win;
 static SDL_Renderer *ren;
@@ -87,37 +88,37 @@ bool sdl_exec(state8080 *state)
         } else if (evt.type == SDL_KEYDOWN) {
             switch (evt.key.keysym.sym) {
                 case SDLK_LEFT:
-                    port1 |= 0x20;
+                    ports[SDL_PORT] |= 0x20;
                     break;
                 case SDLK_RIGHT:
-                    port1 |= 0x40;
+                    ports[SDL_PORT] |= 0x40;
                     break;
                 case SDLK_SPACE:
-                    port1 |= 0x10;
+                    ports[SDL_PORT] |= 0x10;
                     break;
                 case SDLK_c:
-                    port1 |= 0x01;
+                    ports[SDL_PORT] |= 0x01;
                     break;
                 case SDLK_RETURN:
-                    port1 |= 0x04;
+                    ports[SDL_PORT] |= 0x04;
                     break;
             }
         } else if (evt.type == SDL_KEYUP) {
             switch (evt.key.keysym.sym) {
                 case SDLK_LEFT:
-                    port1 &= 0xdf;
+                    ports[SDL_PORT] &= 0xdf;
                     break;
                 case SDLK_RIGHT:
-                    port1 &= 0xbf;
+                    ports[SDL_PORT] &= 0xbf;
                     break;
                 case SDLK_SPACE:
-                    port1 &= 0xef;
+                    ports[SDL_PORT] &= 0xef;
                     break;
                 case SDLK_c:
-                    port1 &= 0xfe;
+                    ports[SDL_PORT] &= 0xfe;
                     break;
                 case SDLK_RETURN:
-                    port1 &= 0xfb;
+                    ports[SDL_PORT] &= 0xfb;
                     break;
             }
         }

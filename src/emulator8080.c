@@ -25,15 +25,14 @@
 #define SCREEN_W SCREEN_H_ORIG
 #define SCREEN_H SCREEN_W_ORIG
 
-uint8_t port1 = 0x00;
+uint8_t ports[PORT_NUM] = {0x00};
 
 static uint8_t get_in(uint8_t port)
 {
     switch (port) {
         case 0x01:
-            return port1;
+            return ports[port];
         case 0x03:
-            //printf("Read. Port %u, Value %02x\n", port, sreg_get_val());
             return sreg_get_val();
         default:
             return 0x00;
@@ -805,19 +804,22 @@ int run_emulator(char *rom)
         
     sdl_init();
 
-    uint32_t ct, lt = SDL_GetTicks();
-    bool quit = false;
-    uint8_t i_n = 1;
+    uint32_t cur, lst = 0;
+    uint8_t iv = 1;
 
-    while (!quit) {
+    while (true) {
         emulate_op8080(&state, false);
-        ct = SDL_GetTicks();
+
+        cur = SDL_GetTicks();
         
-        if (state.interrupts_enabled && (ct - lt) > 16) {
-            handle_interrupt(&state, i_n);
-            quit = sdl_exec(&state);
-            lt = ct;
-            i_n ^= 0x03;
+        if (state.interrupts_enabled && (cur - lst) > 16) {
+            handle_interrupt(&state, iv);
+            lst = cur;
+            iv ^= 0x03;
+
+            if (sdl_exec(&state)) {
+                break;
+            }
         }
     }
 

@@ -1,3 +1,5 @@
+#include "emulator8080.h"
+
 #include <stdint.h>
 
 static uint16_t reg = 0x0000;
