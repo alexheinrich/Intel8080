@@ -1,0 +1,105 @@
+{
+    SDL_VideoInit_REAL
+    Memcheck:Leak
+    ...
+    fun:SDL_VideoInit_REAL
+}
+
+{
+    X11_VideoInit
+    Memcheck:Leak
+    ...
+    fun:X11_VideoInit
+}
+
+{
+    X11_InitKeyboard
+    Memcheck:Leak
+    ...
+    fun:X11_InitKeyboard
+}
+
+{
+    _XlcCurrentLC
+    Memcheck:Leak
+    ...
+    fun:_XlcCurrentLC
+}
+
+{ 
+    SDL_PollEvent_REAL
+    Memcheck:Leak
+    ...
+    fun:SDL_PollEvent_REAL
+}
+
+{ 
+    SDL_CreateWindow_REAL
+    Memcheck:Leak
+    ...
+    fun:SDL_CreateWindow_REAL
+}
+
+{
+	_dl_*
+	Memcheck:Leak
+	...
+	fun:_dl_*
+}
+
+{
+    SDL_InitSubSystem_REAL
+    Memcheck:Leak
+    ...
+    fun:SDL_InitSubSystem_REAL
+}
+
+{
+    SDL_IBus_*
+    Memcheck:Leak
+    ...
+    fun:SDL_IBus_*
+}
+
+{
+    __tls_get_addr
+    Memcheck:Leak
+    ...
+    fun:__tls_get_addr
+}
+
+{
+   Unknown1
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   fun:realloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+}
+
+{
+   Unknown2
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+}

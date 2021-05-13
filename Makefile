@@ -18,10 +18,10 @@ build/%.o: src/%.c $(wildcard src/*.h) Makefile
 emulator8080: $(OBJ_P) $(LIBS)
 	$(GCC) -pthread -o emulator8080 $^ -ldl -lm 
 run_invaders: emulator8080
-	valgrind --leak-check=full --show-leak-kinds=all ./emulator8080 rom/invaders
+	valgrind --leak-check=full --show-leak-kinds=all --suppressions=./misc/valgrind.supp ./emulator8080 rom/invaders
 run_disassembler: emulator8080
-	valgrind --leak-check=full --show-leak-kinds=all ./emulator8080 -d rom/invaders
+	valgrind --leak-check=full --show-leak-kinds=all --suppressions=./misc/valgrind.supp ./emulator8080 -d rom/invaders
 run_test: emulator8080
-	valgrind --leak-check=full --show-leak-kinds=all ./emulator8080 -t
+	valgrind --leak-check=full --show-leak-kinds=all --suppressions=./misc/valgrind.supp ./emulator8080 -t
 clean:
 	rm -rf build/*.o *.dSYM/ emulator8080
