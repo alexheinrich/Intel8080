@@ -2,15 +2,14 @@
 #include "emulator8080.h"
 #include "disassembler8080.h"
 #include "test8080.h"
-#include "video_driver.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static void usage(void)
@@ -58,20 +57,7 @@ int32_t main(int32_t argc, char *argv[])
 
         unload_rom(&state);
     } else {
-        state8080 state;
-        if (load_rom(&state, argv[1]) < 0) {
-            return 1;
-        }
-        
-        int n = 0;
-        printf("cycle: %d\n", n);
-        while (emulate8080(&state, true)) {
-            n++;
-            printf("cycle: %d\n", n);
-            if (n > 100000) break;
-        }
-
-        unload_rom(&state);
+        run_emulator(argv[1]);
     }
 
     return 0;

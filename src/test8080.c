@@ -22,14 +22,13 @@ static void get_op(char *str_ptr, uint8_t *op)
 
 static bool op_excl(uint8_t opcode)
 {
-    if (
-        opcode == 0x27 || // daa
-        opcode == 0xdb || // in
-        opcode == 0xe3    // xthl
-    ) {
-        return true;
-    } else {
-        return false;
+    switch (opcode) {
+        case 0x27: // daa
+        case 0xdb: // in
+        case 0xe3: // xthl
+            return true;
+        default:
+            return false;
     }
 }
 
@@ -232,7 +231,7 @@ bool exec_test_case(FILE *f)
             get_op(word_p, opbytes);
         } else if (strcmp(head, "pre") == 0) {
             init_state_mem(&state, opbytes, word_p);
-            emulate8080(&state, false);
+            emulate_op8080(&state, false);
         } else if (strcmp(head, "post") == 0) {
             state8080 target_state;
             parse_state(&target_state, word_p);

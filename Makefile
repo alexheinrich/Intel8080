@@ -1,25 +1,27 @@
 SDL2 := /opt/sdl2
 SDL2_INC := $(SDL2)/include
 SDL2_LIB := $(SDL2)/lib
-LIBS = $(SDL2_LIB)/libSDL2.a
+LIBS =	$(SDL2_LIB)/libSDL2.a
 
 GCC := gcc
-C_FLAGS := -Og -g -Wall -Wextra -Wconversion -Wsign-conversion -I $(SDL2_INC)
+C_FLAGS := -Og -g -Wall -Wextra -Wconversion -Wsign-conversion -fno-strict-aliasing \
+		   -I $(SDL2_INC)
 
-SRC := main.c emulator8080.c debug8080.c disassembler8080.c utils8080.c test8080.c shift_register.c video_driver.c
+SRC := main.c emulator8080.c debug8080.c disassembler8080.c utils8080.c \
+	   test8080.c shift_register.c sdl.c
 OBJ := $(SRC:.c=.o)
 OBJ_P := $(OBJ:%=build/%)
 
 all: emulator8080
 build/%.o: src/%.c $(wildcard src/*.h) Makefile
 	$(GCC) $(C_FLAGS) -c -o $@ $<  
-emulator8080: $(OBJ_P)
-	$(GCC) -g $^ $(LIBS) -o emulator8080
+emulator8080: $(OBJ_P) $(LIBS)
+	$(GCC) -pthread -o emulator8080 $^ -ldl -lm 
 run_invaders: emulator8080
-	valgrind --leak-check=full --show-leak-kinds=all ./emulator8080 rom/invaders
+	valgrind --leak-check=full --show-leak-kinds=all --suppressions=./misc/valgrind.supp ./emulator8080 rom/invaders
 run_disassembler: emulator8080
-	valgrind --leak-check=full --show-leak-kinds=all ./emulator8080 -d rom/invaders
+	valgrind --leak-check=full --show-leak-kinds=all --suppressions=./misc/valgrind.supp ./emulator8080 -d rom/invaders
 run_test: emulator8080
-	valgrind --leak-check=full --show-leak-kinds=all ./emulator8080 -t
+	valgrind --leak-check=full --show-leak-kinds=all --suppressions=./misc/valgrind.supp ./emulator8080 -t
 clean:
 	rm -rf build/*.o *.dSYM/ emulator8080
