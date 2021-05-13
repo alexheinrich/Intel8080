@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <stdbool.h>
 
+#include "SDL2/SDL_video.h"
 #include "emulator8080.h"
 #include "sdl.h"
 
@@ -53,7 +54,7 @@ void sdl_init()
                             SDL_WINDOWPOS_CENTERED,
                             SCREEN_W,
                             SCREEN_H,
-                            0);
+                            SDL_WINDOW_ALLOW_HIGHDPI);
 
     if (!win) {
         fprintf(stderr, "Failed to create SDL window.\n");
