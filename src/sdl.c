@@ -1,6 +1,8 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 #include <stdbool.h>
 
+#include "SDL2/SDL_audio.h"
 #include "SDL2/SDL_video.h"
 #include "emulator8080.h"
 #include "sdl.h"
@@ -16,6 +18,11 @@ static SDL_Window *win;
 static SDL_Renderer *ren;
 static SDL_Texture *tex;
 static SDL_Event evt;
+
+#define NUM_WAV 9
+Mix_Chunk *wav_buf[NUM_WAV];
+uint32_t wav_len[NUM_WAV];
+SDL_AudioDeviceID dev_id;
 
 static void draw_screen(uint8_t *mem)
 {
@@ -42,9 +49,51 @@ static void draw_screen(uint8_t *mem)
     SDL_RenderPresent(ren);
 }
 
+static void sound_init()
+{
+    if (Mix_OpenAudioDevice(44100, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 1024,
+                        0, SDL_AUDIO_ALLOW_ANY_CHANGE) == -1) {
+
+        fprintf(stderr, "Failed open audio device.\n");
+    }
+
+    if (Mix_AllocateChannels(NUM_WAV) < 0) {
+        fprintf(stderr, "Failed to allocate audio channels.\n");
+    }
+
+    for (uint32_t i = 0; i < NUM_WAV; ++i) {
+        char filename[12];
+        sprintf(filename, "sound/%u.wav", i);
+        wav_buf[i] = Mix_LoadWAV(filename);
+    }
+}
+
+void stop_loop(uint8_t c)
+{
+    Mix_HaltChannel(c);
+}
+
+void play_sound(uint8_t c)
+{
+    Mix_PlayChannel(c, wav_buf[c], 0);
+}
+
+void loop_sound(uint8_t c)
+{
+    Mix_PlayChannel(c, wav_buf[c], -1);
+}
+
+static void sound_quit()
+{
+    for (uint32_t i = 0; i < NUM_WAV; ++i) {
+        Mix_FreeChunk(wav_buf[i]);
+    }
+    Mix_CloseAudio();
+}
+
 void sdl_init()
 {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
         SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
         return;
     }
@@ -79,6 +128,8 @@ void sdl_init()
         SDL_Log("Unable to create texture: %s", SDL_GetError());
         return;
     }
+
+    sound_init();
 }
 
 bool sdl_exec(state8080 *state)
@@ -135,5 +186,6 @@ void sdl_quit()
     SDL_DestroyTexture(tex);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
+    sound_quit();
     SDL_Quit();
 }

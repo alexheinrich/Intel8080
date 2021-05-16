@@ -46,9 +46,63 @@ static void wr_out(uint8_t port, uint8_t val)
             //printf("Write. Port %u, Value %02x\n", port, val);
             sreg_set_shift(val);
             break;
+        case 0x03: {
+                static uint8_t last_val = 0;
+
+                if ((val & 0x01) & !(last_val & 0x01)) {
+                    loop_sound(0);
+                } else if ((!(val & 0x01)) & (last_val & 0x01)) {
+                    stop_loop(0);
+                }
+
+                if (((val >> 1) & 0x01) & !((last_val >> 1) & 0x01)) {
+                    play_sound(1);
+                }
+
+                if (((val >> 2) & 0x01) & !((last_val >> 2) & 0x01)) {
+                    play_sound(2);
+                }
+
+                if (((val >> 3) & 0x01) & !((last_val >> 3) & 0x01)) {
+                    play_sound(3);
+                }
+
+                if (((val >> 4) & 0x01) & !((last_val >> 4) & 0x01)) {
+                    play_sound(9);
+                }
+
+                last_val = val;
+            }
+
+            break;
         case 0x04:
             //printf("Write. Port %u, Value %02x\n", port, val);
             sreg_push_val(val);
+            break;
+        case 0x05: {
+                static uint8_t last_val = 0x00;
+                if (((val >> 0) & 0x01) && !((last_val >> 0) & 0x01)) {
+                    play_sound(4);
+                }
+               
+                if (((val >> 1) & 0x01) && !((last_val >> 1) & 0x01)) {
+                    play_sound(5);
+                }
+                
+                if (((val >> 2) & 0x01) && !((last_val >> 2) & 0x01)) {
+                    play_sound(6);
+                }
+
+                if (((val >> 3) & 0x01) && !((last_val >> 3) & 0x01)) {
+                    play_sound(7);
+                }
+                
+                if (((val >> 4) & 0x01) && !((last_val >> 4) & 0x01)) {
+                    play_sound(8);
+                }
+                last_val = val;
+            }
+
             break;
         default:
             break;

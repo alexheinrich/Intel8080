@@ -24,6 +24,18 @@ make
 make install
 ```
 
+### Build and install SDL mixer
+```
+tar zxvf SDL2_mixer-2.0.4.tar.gz
+cd SDL2_mixer-2.0.4
+mkdir build
+cd build
+../configure --prefix=/opt/sdl2 --with-sdl-prefix=/opt/sdl2
+
+make
+make install
+```
+
 ### Build emulator
 
 To build the disassembler and emulator, run:
