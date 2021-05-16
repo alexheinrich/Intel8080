@@ -10,8 +10,8 @@
 #define SCREEN_OFFSET 0x2400
 #define SCREEN_W_ORIG 256
 #define SCREEN_H_ORIG 224
-#define SCREEN_W SCREEN_H_ORIG
-#define SCREEN_H SCREEN_W_ORIG
+#define SCREEN_W 672
+#define SCREEN_H 768
 #define SDL_PORT 0x01
 
 static SDL_Window *win;
@@ -21,8 +21,6 @@ static SDL_Event evt;
 
 #define NUM_WAV 9
 Mix_Chunk *wav_buf[NUM_WAV];
-uint32_t wav_len[NUM_WAV];
-SDL_AudioDeviceID dev_id;
 
 static void draw_screen(uint8_t *mem)
 {
@@ -30,10 +28,10 @@ static void draw_screen(uint8_t *mem)
     uint8_t *pixels;
     SDL_LockTexture(tex, NULL, (void **) &pixels, &pitch);
 
-    for (uint32_t lin = 0; lin < SCREEN_H; ++lin) {
-        for (uint32_t col = 0; col < SCREEN_W; ++ col) {
-            uint32_t byte = col * (SCREEN_W_ORIG >> 3) + ((SCREEN_W_ORIG - lin) >> 3);
-            uint8_t bit_off = ~lin & 0x07;
+    for (uint32_t lin = 0; lin < SCREEN_H_ORIG; ++lin) {
+        for (uint32_t col = 0; col < SCREEN_W_ORIG; ++col) {
+            uint32_t byte = lin * (SCREEN_W_ORIG >> 3) + (col >> 3);
+            uint8_t bit_off = col & 0x07;
             uint8_t bit = (mem[SCREEN_OFFSET + byte] >> bit_off) & 0x01;
             uint8_t normalized_val = (uint8_t) (-bit & 0xff);
 
@@ -45,7 +43,17 @@ static void draw_screen(uint8_t *mem)
     }
 
     SDL_UnlockTexture(tex);
-    SDL_RenderCopy(ren, tex, NULL, NULL);
+
+    SDL_Rect dst_rect = (SDL_Rect) {
+        .x = 0,
+        .y = SCREEN_H,
+        .w = SCREEN_H,
+        .h = SCREEN_W
+    };
+
+    //SDL_RenderCopy(ren, tex, NULL, NULL);
+    SDL_Point orig = (SDL_Point) { .x = 0, .y = 0 };
+    SDL_RenderCopyEx(ren, tex, NULL, &dst_rect, 270.0, &orig, SDL_FLIP_NONE);
     SDL_RenderPresent(ren);
 }
 
@@ -120,8 +128,8 @@ void sdl_init()
     tex = SDL_CreateTexture(ren,
                             SDL_PIXELFORMAT_RGB888,
                             SDL_TEXTUREACCESS_STREAMING,
-                            SCREEN_W,
-                            SCREEN_H
+                            SCREEN_W_ORIG,
+                            SCREEN_H_ORIG
                             );
 
     if (!tex) {
