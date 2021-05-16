@@ -1,8 +1,11 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
+#include <SDL2/SDL_image.h>
 #include <stdbool.h>
 
 #include "SDL2/SDL_audio.h"
+#include "SDL2/SDL_render.h"
+#include "SDL2/SDL_surface.h"
 #include "SDL2/SDL_video.h"
 #include "emulator8080.h"
 #include "sdl.h"
@@ -14,10 +17,11 @@
 #define SCREEN_H 768
 #define SDL_PORT 0x01
 
-static SDL_Window *win;
-static SDL_Renderer *ren;
-static SDL_Texture *tex;
-static SDL_Event evt;
+SDL_Window *win;
+SDL_Renderer *ren;
+SDL_Texture *tex;
+SDL_Event evt;
+SDL_Texture *background; 
 
 #define NUM_WAV 9
 Mix_Chunk *wav_buf[NUM_WAV];
@@ -26,6 +30,9 @@ static void draw_screen(uint8_t *mem)
 {
     int pitch;
     uint8_t *pixels;
+    
+    SDL_RenderCopy(ren, background, NULL, NULL);
+
     SDL_LockTexture(tex, NULL, (void **) &pixels, &pitch);
 
     for (uint32_t lin = 0; lin < SCREEN_H_ORIG; ++lin) {
@@ -37,8 +44,9 @@ static void draw_screen(uint8_t *mem)
 
             uint32_t tex_coordinate = (col << 2) + lin * (uint32_t) pitch;
             pixels[tex_coordinate] = normalized_val;     // b
-            pixels[tex_coordinate + 1] = normalized_val; // g
-            pixels[tex_coordinate + 2] = normalized_val; // r
+            pixels[tex_coordinate + 1] = normalized_val;     // b
+            pixels[tex_coordinate + 2] = normalized_val; // g
+            pixels[tex_coordinate + 3] = normalized_val; // r
         }
     }
 
@@ -51,9 +59,9 @@ static void draw_screen(uint8_t *mem)
         .h = SCREEN_W
     };
 
-    //SDL_RenderCopy(ren, tex, NULL, NULL);
     SDL_Point orig = (SDL_Point) { .x = 0, .y = 0 };
     SDL_RenderCopyEx(ren, tex, NULL, &dst_rect, 270.0, &orig, SDL_FLIP_NONE);
+
     SDL_RenderPresent(ren);
 }
 
@@ -126,16 +134,28 @@ void sdl_init()
     }
 
     tex = SDL_CreateTexture(ren,
-                            SDL_PIXELFORMAT_RGB888,
+                            SDL_PIXELFORMAT_RGBA8888,
                             SDL_TEXTUREACCESS_STREAMING,
                             SCREEN_W_ORIG,
                             SCREEN_H_ORIG
                             );
+    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
 
     if (!tex) {
         SDL_Log("Unable to create texture: %s", SDL_GetError());
         return;
     }
+
+
+    IMG_Init(IMG_INIT_PNG);
+    SDL_Surface *img = IMG_Load("image/invaders.png");
+    if (!img) {
+        SDL_Log("Unable to open image: %s\n", IMG_GetError());
+    }
+
+    background = SDL_CreateTextureFromSurface(ren, img);
+
+    SDL_FreeSurface(img);
 
     sound_init();
 }
@@ -192,8 +212,10 @@ bool sdl_exec(state8080 *state)
 void sdl_quit()
 {
     SDL_DestroyTexture(tex);
+    SDL_DestroyTexture(background);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
     sound_quit();
+    IMG_Quit();
     SDL_Quit();
 }

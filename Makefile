@@ -2,7 +2,7 @@ SDL2 := /opt/sdl2
 SDL2_INC := $(SDL2)/include
 SDL2_LIB := $(SDL2)/lib
 
-LIBS =	$(SDL2_LIB)/libSDL2.a $(SDL2_LIB)/libSDL2_mixer.a
+LIBS =	$(SDL2_LIB)/libSDL2.a $(SDL2_LIB)/libSDL2_mixer.a $(SDL2_LIB)/libSDL2_image.a
 
 GCC := gcc
 C_FLAGS := -Og -g -Wall -Wextra -Wconversion -Wsign-conversion -fno-strict-aliasing \
