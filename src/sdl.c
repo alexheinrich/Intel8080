@@ -13,8 +13,10 @@
 #define SCREEN_OFFSET 0x2400
 #define SCREEN_W_ORIG 256
 #define SCREEN_H_ORIG 224
-#define SCREEN_W 672
-#define SCREEN_H 768
+#define GAME_RECT_W 872
+#define GAME_RECT_H 1024
+#define SCREEN_W 1000
+#define SCREEN_H 1000
 #define SDL_PORT 0x01
 
 SDL_Window *win;
@@ -54,15 +56,71 @@ static void draw_screen(uint8_t *mem)
 
     SDL_Rect dst_rect = (SDL_Rect) {
         .x = 0,
-        .y = SCREEN_H,
-        .w = SCREEN_H,
-        .h = SCREEN_W
+        .y = GAME_RECT_H,
+        .w = GAME_RECT_H,
+        .h = GAME_RECT_W
     };
 
     SDL_Point orig = (SDL_Point) { .x = 0, .y = 0 };
     SDL_RenderCopyEx(ren, tex, NULL, &dst_rect, 270.0, &orig, SDL_FLIP_NONE);
 
     SDL_RenderPresent(ren);
+}
+
+static void video_init()
+{
+    win = SDL_CreateWindow("Intel 8080 Emulator",
+                            SDL_WINDOWPOS_CENTERED,
+                            SDL_WINDOWPOS_CENTERED,
+                            SCREEN_W,
+                            SCREEN_H,
+                            SDL_WINDOW_ALLOW_HIGHDPI);
+
+    if (!win) {
+        fprintf(stderr, "Failed to create SDL window.\n");
+        return;
+    }
+
+    ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+    
+    if (!ren) {
+        SDL_Log("Unable to create renderer: %s", SDL_GetError());
+        return;
+    }
+
+    tex = SDL_CreateTexture(ren,
+                            SDL_PIXELFORMAT_RGBA8888,
+                            SDL_TEXTUREACCESS_STREAMING,
+                            SCREEN_W_ORIG,
+                            SCREEN_H_ORIG
+                            );
+    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+
+    if (!tex) {
+        SDL_Log("Unable to create texture: %s", SDL_GetError());
+        return;
+    }
+
+
+    IMG_Init(IMG_INIT_PNG);
+    SDL_Surface *bg = IMG_Load("image/invaders.png");
+    if (!bg) {
+        SDL_Log("Unable to open image: %s\n", IMG_GetError());
+    }
+
+    background = SDL_CreateTextureFromSurface(ren, bg);
+
+    SDL_FreeSurface(bg);
+
+}
+
+static void video_quit()
+{
+    SDL_DestroyTexture(tex);
+    SDL_DestroyTexture(background);
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+    IMG_Quit();
 }
 
 static void sound_init()
@@ -114,49 +172,7 @@ void sdl_init()
         return;
     }
 
-    win = SDL_CreateWindow("Intel 8080 Emulator",
-                            SDL_WINDOWPOS_CENTERED,
-                            SDL_WINDOWPOS_CENTERED,
-                            SCREEN_W,
-                            SCREEN_H,
-                            SDL_WINDOW_ALLOW_HIGHDPI);
-
-    if (!win) {
-        fprintf(stderr, "Failed to create SDL window.\n");
-        return;
-    }
-
-    ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-    
-    if (!ren) {
-        SDL_Log("Unable to create renderer: %s", SDL_GetError());
-        return;
-    }
-
-    tex = SDL_CreateTexture(ren,
-                            SDL_PIXELFORMAT_RGBA8888,
-                            SDL_TEXTUREACCESS_STREAMING,
-                            SCREEN_W_ORIG,
-                            SCREEN_H_ORIG
-                            );
-    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-
-    if (!tex) {
-        SDL_Log("Unable to create texture: %s", SDL_GetError());
-        return;
-    }
-
-
-    IMG_Init(IMG_INIT_PNG);
-    SDL_Surface *img = IMG_Load("image/invaders.png");
-    if (!img) {
-        SDL_Log("Unable to open image: %s\n", IMG_GetError());
-    }
-
-    background = SDL_CreateTextureFromSurface(ren, img);
-
-    SDL_FreeSurface(img);
-
+    video_init();
     sound_init();
 }
 
@@ -211,11 +227,7 @@ bool sdl_exec(state8080 *state)
 
 void sdl_quit()
 {
-    SDL_DestroyTexture(tex);
-    SDL_DestroyTexture(background);
-    SDL_DestroyRenderer(ren);
-    SDL_DestroyWindow(win);
+    video_quit();
     sound_quit();
-    IMG_Quit();
     SDL_Quit();
 }
