@@ -858,15 +858,21 @@ int run_emulator(char *rom)
         
     sdl_init();
 
+
     uint32_t cur, lst = 0;
     uint8_t iv = 1;
 
     while (true) {
+        if (state.pc == 0x18DC) {
+            load_hiscore(&state);
+        }
+
         emulate_op8080(&state, false);
 
         cur = SDL_GetTicks();
         
         if (state.interrupts_enabled && (cur - lst) > 16) {
+
             handle_interrupt(&state, iv);
             lst = cur;
             iv ^= 0x03;
@@ -878,6 +884,7 @@ int run_emulator(char *rom)
     }
 
     sdl_quit();
+    save_hiscore(&state);
     unload_rom(&state);
 
     return 0;

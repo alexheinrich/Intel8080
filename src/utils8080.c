@@ -2,6 +2,7 @@
 #include "utils8080.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -116,3 +117,34 @@ void unload_rom(state8080 *state)
     }
 }
 
+void load_hiscore(state8080 *state)
+{
+    FILE *dat = open_f("hiscore.dat");
+
+    int hiscore;
+    if (fscanf(dat, "%04x", &hiscore) < 0) {
+        fprintf(stderr, "fscanf failed to read hiscore.\n");
+        return;
+    }
+    
+    uint8_t hs_lo = (uint8_t) hiscore;
+    uint8_t hs_hi = (uint8_t) (hiscore >> 8);
+
+    state->memory[0x20f4] = hs_lo;
+    state->memory[0x20f5] = hs_hi;
+
+    if (!close_f(dat)) {
+        fprintf(stderr, "Unable to close hi score file.\n");
+    }
+}
+
+void save_hiscore(state8080 *state)
+{
+    FILE *dat = fopen("hiscore.dat", "wb");
+    uint16_t hiscore = (uint16_t) ((state->memory[0x20f5] << 8) | (state->memory[0x20f4]));
+    fprintf(dat, "%04x", hiscore);
+
+    if (!close_f(dat)) {
+        fprintf(stderr, "Unable to close hi score file.\n");
+    }
+}

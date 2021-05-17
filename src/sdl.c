@@ -15,8 +15,8 @@
 #define SCREEN_H_ORIG 224
 #define GAME_RECT_W 872
 #define GAME_RECT_H 1024
-#define SCREEN_W 1000
-#define SCREEN_H 1000
+#define SCREEN_W GAME_RECT_W
+#define SCREEN_H GAME_RECT_H
 #define SDL_PORT 0x01
 
 SDL_Window *win;
@@ -104,6 +104,7 @@ static void video_init()
 
     IMG_Init(IMG_INIT_PNG);
     SDL_Surface *bg = IMG_Load("image/invaders.png");
+    
     if (!bg) {
         SDL_Log("Unable to open image: %s\n", IMG_GetError());
     }
