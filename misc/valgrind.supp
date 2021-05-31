@@ -103,3 +103,52 @@
    obj:*
    obj:*
 }
+
+{
+   PULSE_AUDIO_Init
+   Memcheck:Leak
+   ...
+   fun:PULSEAUDIO_Init
+}
+
+{
+   ConnectToPulseServer_Internal
+   Memcheck:Leak
+   ...
+   fun:ConnectToPulseServer_Internal
+}
+
+{
+   pa_run_once
+   Memcheck:Leak
+   ...
+   fun:pa_run_once
+}
+
+{
+   pa_mainloop_dispatch
+   Memcheck:Leak
+   ...
+   fun:pa_mainloop_dispatch
+}
+
+{
+   pa_pdispatch_run
+   Memcheck:Leak
+   ...
+   fun:pa_pdispatch_run
+}
+
+{
+   Pulse Audio
+   Memcheck:Leak
+   ...
+   fun:pa_*
+}
+
+{
+   DBus
+   Memcheck:Leak
+   ...
+   fun:*dbus_*
+}
