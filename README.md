@@ -1,6 +1,7 @@
 # Intel 8080 Disassembler and Emulator
 
-Work in progress for a disassembler and emulator of the Intel 8080 8-bit microprocessor. Can run early 8-bit games such as Space invaders!
+A disassembler and emulator of the Intel 8080 8-bit microprocessor with added periphery emulation (joystick/buttons, screen and shift register) to run the arcade machine version of Space Invaders.
+![Screenshot of the emulator running space invaders](https://github.com/alexheinrich/Intel8080/blob/main/misc/invaders.gif)
 
 ## How to build
 
