@@ -14,7 +14,7 @@ OBJ := $(SRC:.c=.o)
 OBJ_P := $(OBJ:%=build/%)
 
 all: emulator8080
-build/%.o: src/%.c $(wildcard src/*.h) Makefile
+build/%.o: src/%.c $(wildcard src/*.h) Makefile | build
 	$(GCC) $(C_FLAGS) -c -o $@ $<  
 emulator8080: $(OBJ_P) $(LIBS)
 	$(GCC) -pthread -o emulator8080 $^ -ldl -lm 
@@ -26,5 +26,7 @@ run_test: emulator8080
 	valgrind --leak-check=full --show-leak-kinds=all --suppressions=./misc/valgrind.supp ./emulator8080 -t
 create_log: emulator8080
 	valgrind --leak-check=full --show-leak-kinds=all --gen-suppressions=all --suppressions=./misc/valgrind.supp --log-file=misc/valgrind.log ./emulator8080 rom/invaders
+build:
+	mkdir $@
 clean:
 	rm -rf build/*.o *.dSYM/ emulator8080
