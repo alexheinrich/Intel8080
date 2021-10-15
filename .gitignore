@@ -1,10 +1,10 @@
-rom/
 .cache/
 *.swp
 *.swo
 *.swn
 *.o
 *.dSYM
+build/*
 .DS_STORE
 disassembler8080
 emulator8080
