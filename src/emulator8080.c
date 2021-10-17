@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #define SCREEN_OFFSET 0x2400
 #define SCREEN_W_ORIG 256
@@ -859,8 +860,9 @@ int run_emulator(char *rom)
     sdl_init();
 
 
-    uint32_t cur, lst = 0;
-    uint8_t iv = 1;
+    uint32_t t, t_inr = 0;
+    uint32_t iv = 0x01;
+    uint32_t cyc = 0;
 
     while (true) {
         if (state.pc == 0x18DC) {
@@ -869,18 +871,24 @@ int run_emulator(char *rom)
 
         emulate_op8080(&state, false);
 
-        cur = SDL_GetTicks();
+        t = SDL_GetTicks();
         
-        if (state.interrupts_enabled && (cur - lst) > 16) {
-
+        if (state.interrupts_enabled && (t - t_inr) > 16) {
             handle_interrupt(&state, iv);
-            lst = cur;
             iv ^= 0x03;
+            t_inr = t;
 
             if (sdl_exec(&state)) {
                 break;
             }
         }
+
+        if (cyc > 10000) {
+            usleep(20000);
+            cyc = 0;
+        }
+
+        cyc++;
     }
 
     sdl_quit();
