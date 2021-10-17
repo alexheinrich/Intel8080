@@ -4,13 +4,13 @@
 #include "utils8080.h"
 #include "sdl.h"
 
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
 #include <errno.h>
-#include <SDL2/SDL.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -841,11 +841,11 @@ bool emulate_op8080(state8080 *state, bool debug)
     return true;
 }
 
-static void handle_interrupt(state8080 *state, uint8_t in)
+static void handle_interrupt(state8080 *state, uint32_t iv)
 {
     push_pc(state, 0);
     state->interrupts_enabled = 0;
-    state->pc = 8 * in;
+    state->pc = (uint8_t) (8 * iv);
 }
 
 int run_emulator(char *rom)
