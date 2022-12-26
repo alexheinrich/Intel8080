@@ -130,8 +130,8 @@ void load_hiscore(state8080 *state)
     uint8_t hs_lo = (uint8_t) hiscore;
     uint8_t hs_hi = (uint8_t) (hiscore >> 8);
 
-    state->memory[0x20f4] = hs_lo;
-    state->memory[0x20f5] = hs_hi;
+    state->memory[0x1bf4] = hs_lo;
+    state->memory[0x1bf5] = hs_hi;
 
     if (!close_f(dat)) {
         fprintf(stderr, "Unable to close hi score file.\n");

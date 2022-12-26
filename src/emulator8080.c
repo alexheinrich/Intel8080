@@ -856,6 +856,8 @@ int run_emulator(char *rom)
     if (load_rom(&state, rom) < 0) {
         return 1;
     }
+
+    load_hiscore(&state);
         
     sdl_init();
 
@@ -865,10 +867,6 @@ int run_emulator(char *rom)
     uint32_t cyc = 0;
 
     while (true) {
-        if (state.pc == 0x18DC) {
-            load_hiscore(&state);
-        }
-
         emulate_op8080(&state, false);
 
         t = SDL_GetTicks();
