@@ -31,7 +31,7 @@ make install
 ### Build and install SDL image
 ```
 tar zxvf SDL2_image-2.0.5.tar.gz
-cd SDL2_mixer-2.0.5
+cd SDL2_image-2.0.5
 mkdir build
 cd build
 ../configure --prefix=/opt/sdl2 --with-sdl-prefix=/opt/sdl2
